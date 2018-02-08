@@ -2,7 +2,7 @@
 
 from ast import FunctionDef, parse
 from typing import cast
-from pyff.pyfference import FunctionPyfference
+from pyff.pyfference import FunctionPyfference, ModulePyfference
 
 def _pyff_function_ast(first: FunctionDef, second: FunctionDef) -> FunctionPyfference:
     """Return differences between two Python function ASTs, or None if they are identical"""
@@ -23,3 +23,11 @@ def pyff_function(first: str, second: str) -> FunctionPyfference:
 
 
     return _pyff_function_ast(cast(FunctionDef, first_ast[0]), cast(FunctionDef, second_ast[0]))
+
+def pyff_module(first: str, second: str) -> ModulePyfference:
+    """Return difference between two Python modules, or None if they are identical"""
+    # pylint: disable=unused-variable
+    first_ast = parse(first).body
+    second_ast = parse(second).body
+
+    return None

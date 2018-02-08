@@ -16,3 +16,11 @@ class FunctionPyfference:  # pylint: disable=too-few-public-methods
 
     def __len__(self):
         return len(self.changes)
+
+class ModulePyfference:  # pylint: disable=too-few-public-methods
+    """Holds differences between two Python modules"""
+    def __init__(self) -> None:
+        self.changes: List[Change] = []
+
+    def __iter__(self):
+        yield from self.changes
