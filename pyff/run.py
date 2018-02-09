@@ -24,8 +24,7 @@ def main() -> None: # pragma: no cover
         print(f"Pyff did not detect any significant difference between {args.old} and {args.new}")
         sys.exit(0)
 
-    for change in changes:
-        print(change)
+    print(changes)
 
 if __name__ == "__main__": # pragma: no cover
     main()
