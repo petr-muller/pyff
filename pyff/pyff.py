@@ -3,16 +3,17 @@
 from ast import FunctionDef, parse, NodeVisitor, Module
 from typing import cast
 from collections import defaultdict
-from pyff.pyfference import FunctionPyfference, ModulePyfference, FromImportPyfference
 
-def _pyff_function_ast(first: FunctionDef, second: FunctionDef) -> FunctionPyfference:
+import pyff.pyfference as pf
+
+def _pyff_function_ast(first: FunctionDef, second: FunctionDef) -> pf.FunctionPyfference:
     """Return differences between two Python function ASTs, or None if they are identical"""
     if first.name == second.name:
         return None
 
-    return FunctionPyfference(names=(first.name, second.name))
+    return pf.FunctionPyfference(names=(first.name, second.name))
 
-def _pyff_from_imports(first_ast: Module, second_ast: Module) -> FromImportPyfference:
+def _pyff_from_imports(first_ast: Module, second_ast: Module) -> pf.FromImportPyfference:
     """Return differences in `from X import Y` statements in two modules"""
     first_walker = ImportFromExtractor()
     second_walker = ImportFromExtractor()
@@ -25,12 +26,37 @@ def _pyff_from_imports(first_ast: Module, second_ast: Module) -> FromImportPyffe
     for module in appeared:
         new[module] = second_walker.modules[module]
 
-    return FromImportPyfference(new) if new else None
+    return pf.FromImportPyfference(new) if new else None
 
-def _pyff_modules(first_ast: Module, second_ast: Module) -> ModulePyfference:
+class ClassesExtractor(NodeVisitor):
+    """Extracts information about classes in a module"""
+    def __init__(self):
+        self.classes = set()
+
+    def visit_ClassDef(self, node): # pylint: disable=invalid-name
+        """Save information about classes that appeared in a module"""
+        self.classes.add(node.name)
+
+def _pyff_classes(first_ast: Module, second_ast: Module) -> pf.ClassesPyfference:
+    """Return differences in classes defined in two modules"""
+    first_walker = ClassesExtractor()
+    second_walker = ClassesExtractor()
+
+    first_walker.visit(first_ast)
+    second_walker.visit(second_ast)
+
+    appeared = second_walker.classes - first_walker.classes
+
+    return pf.ClassesPyfference(appeared) if appeared else None
+
+def _pyff_modules(first_ast: Module, second_ast: Module) -> pf.ModulePyfference:
     from_imports = _pyff_from_imports(first_ast, second_ast)
+    classes = _pyff_classes(first_ast, second_ast)
 
-    return ModulePyfference(from_imports) if from_imports else None
+    if from_imports or classes:
+        return pf.ModulePyfference(from_imports, classes)
+
+    return None
 
 class ImportFromExtractor(NodeVisitor):
     """Extracts information about `from x import y` statements"""
@@ -42,7 +68,7 @@ class ImportFromExtractor(NodeVisitor):
         """Save information about `from x import y` statements"""
         self.modules[node.module].update([node.name for node in node.names])
 
-def pyff_function(first: str, second: str) -> FunctionPyfference:
+def pyff_function(first: str, second: str) -> pf.FunctionPyfference:
     """Return differences between two Python functions, or None if they are identical"""
     first_ast = parse(first).body
     second_ast = parse(second).body
@@ -54,7 +80,7 @@ def pyff_function(first: str, second: str) -> FunctionPyfference:
 
     return _pyff_function_ast(cast(FunctionDef, first_ast[0]), cast(FunctionDef, second_ast[0]))
 
-def pyff_module(first: str, second: str) -> ModulePyfference:
+def pyff_module(first: str, second: str) -> pf.ModulePyfference:
     """Return difference between two Python modules, or None if they are identical"""
     # pylint: disable=unused-variable
     first_ast = parse(first)

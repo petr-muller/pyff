@@ -31,14 +31,30 @@ class FromImportPyfference: # pylint: disable=too-few-public-methods
 
         return "\n".join(lines)
 
+class ClassesPyfference: # pylint: disable=too-few-public-methods
+    """Holds differences between classes defined in a module"""
+    def __init__(self, new: List["str"]) -> None:
+        self.new = new
+
+    def __str__(self):
+        template = "Added classes {classes}"
+        return template.format(classes=", ".join([f"'{cls}'" for cls in self.new]))
+
 class ModulePyfference:  # pylint: disable=too-few-public-methods
     """Holds differences between two Python modules"""
-    def __init__(self, from_imports: FromImportPyfference = None) -> None:
+    def __init__(self, from_imports: FromImportPyfference = None,
+                 classes: ClassesPyfference = None) -> None:
         self.changes: List = []
         self.from_imports: FromImportPyfference = None
+        self.classes: ClassesPyfference = None
+
         if from_imports:
             self.from_imports = from_imports
             self.changes.append(self.from_imports)
+
+        if classes:
+            self.classes = classes
+            self.changes.append(self.classes)
 
     def __len__(self):
         return len(self.changes)
