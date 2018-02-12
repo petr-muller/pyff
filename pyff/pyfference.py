@@ -37,8 +37,7 @@ class ClassesPyfference: # pylint: disable=too-few-public-methods
         self.new = new
 
     def __str__(self):
-        template = "Added classes {classes}"
-        return template.format(classes=", ".join([f"'{cls}'" for cls in self.new]))
+        return "\n".join([f"New class '{cls}'" for cls in self.new])
 
 class ModulePyfference:  # pylint: disable=too-few-public-methods
     """Holds differences between two Python modules"""

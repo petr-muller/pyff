@@ -26,13 +26,13 @@ def test_module_with_from_imports():
     assert str(mpyff) == "Added import of new names 'path', 'getenv' from new package 'os'"
 
 def test_new_classes():
-    cpyff = pf.ClassesPyfference(new=["NewClass"])
-    assert cpyff.new == ["NewClass"]
-    assert str(cpyff) == "Added classes 'NewClass'"
+    cpyff = pf.ClassesPyfference(new=["NewClass", "NewClass2"])
+    assert cpyff.new == ["NewClass", "NewClass2"]
+    assert str(cpyff) == "New class 'NewClass'\nNew class 'NewClass2'"
 
 def test_module_with_new_classes():
     cpyff = pf.ClassesPyfference(new=["NewClass"])
     mpyff = pf.ModulePyfference(classes=cpyff)
     assert mpyff.classes is not None
     assert len(mpyff) == 1
-    assert str(mpyff) == "Added classes 'NewClass'"
+    assert str(mpyff) == "New class 'NewClass'"
