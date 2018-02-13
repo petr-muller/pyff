@@ -1,3 +1,5 @@
+#!/bin/bash
+
 example() {
   pyff tests/examples/$1*.old tests/examples/$1*.new
 }
