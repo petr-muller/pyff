@@ -11,3 +11,7 @@ st() {
   cat strict-setup.cfg > setup.cfg
   python setup.py test
 }
+
+cov() {
+  ft && firefox htmlcov/index.html
+}
