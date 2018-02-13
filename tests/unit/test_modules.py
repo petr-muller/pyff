@@ -16,7 +16,10 @@ def func():
 CLASSES_MODULE = """import sys
 
 class Klass:
-    pass
+    def method(self):
+        pass
+    def _method(self):
+        pass
 
 def func():
     pass"""
@@ -30,8 +33,10 @@ def test_changed_module():
     difference = pyff_module(TRIVIAL_MODULE, IMPORT_MODULE)
     assert difference is not None
     assert len(difference) == 1
+    assert str(difference) == "Added import of new names 'path' from new package 'os'"
 
 def test_module_with_new_class():
     difference = pyff_module(TRIVIAL_MODULE, CLASSES_MODULE)
     assert difference is not None
     assert len(difference) == 1
+    assert str(difference) == "New class 'Klass' with 1 public methods"
