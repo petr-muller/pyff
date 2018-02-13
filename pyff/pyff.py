@@ -1,10 +1,11 @@
 """Functions for comparison of various Python entities"""
 
 from ast import FunctionDef, parse, NodeVisitor, Module
-from typing import cast
+from typing import cast, Set
 from collections import defaultdict
 
 import pyff.pyfference as pf
+from pyff.summary import ClassSummary
 
 def _pyff_function_ast(first: FunctionDef, second: FunctionDef) -> pf.FunctionPyfference:
     """Return differences between two Python function ASTs, or None if they are identical"""
@@ -30,12 +31,23 @@ def _pyff_from_imports(first_ast: Module, second_ast: Module) -> pf.FromImportPy
 
 class ClassesExtractor(NodeVisitor):
     """Extracts information about classes in a module"""
-    def __init__(self):
-        self.classes = set()
+    def __init__(self) -> None:
+        self.classes: Set[ClassSummary] = set()
+        self._private_methods: int = 0
+        self._methods: int = 0
 
     def visit_ClassDef(self, node): # pylint: disable=invalid-name
         """Save information about classes that appeared in a module"""
-        self.classes.add(node.name)
+        self._private_methods: int = 0
+        self._methods: int = 0
+        self.generic_visit(node)
+        self.classes.add(ClassSummary(node.name, self._methods, self._private_methods))
+
+    def visit_FunctionDef(self, node): # pylint: disable=invalid-name
+        """Save counts of encountered private/public methods"""
+        if node.name.startswith("_"):
+            self._private_methods += 1
+        self._methods += 1
 
 def _pyff_classes(first_ast: Module, second_ast: Module) -> pf.ClassesPyfference:
     """Return differences in classes defined in two modules"""

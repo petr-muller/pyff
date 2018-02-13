@@ -28,11 +28,11 @@ def test_module_with_from_imports():
 def test_new_classes():
     cpyff = pf.ClassesPyfference(new=["NewClass", "NewClass2"])
     assert cpyff.new == ["NewClass", "NewClass2"]
-    assert str(cpyff) == "New class 'NewClass'\nNew class 'NewClass2'"
+    assert str(cpyff) == "New NewClass\nNew NewClass2"
 
 def test_module_with_new_classes():
     cpyff = pf.ClassesPyfference(new=["NewClass"])
     mpyff = pf.ModulePyfference(classes=cpyff)
     assert mpyff.classes is not None
     assert len(mpyff) == 1
-    assert str(mpyff) == "New class 'NewClass'"
+    assert str(mpyff) == "New NewClass"

@@ -1,6 +1,7 @@
 """Classes holding information about differences between individual Python elements"""
 from collections import namedtuple
-from typing import Tuple, List, Dict
+from typing import Tuple, List, Dict, Iterable
+from pyff.summary import ClassSummary
 
 Change = namedtuple("Change", ["old", "new"])
 
@@ -33,11 +34,11 @@ class FromImportPyfference: # pylint: disable=too-few-public-methods
 
 class ClassesPyfference: # pylint: disable=too-few-public-methods
     """Holds differences between classes defined in a module"""
-    def __init__(self, new: List["str"]) -> None:
-        self.new = new
+    def __init__(self, new: Iterable[ClassSummary]) -> None:
+        self.new: Iterable[ClassSummary] = new
 
     def __str__(self):
-        return "\n".join([f"New class '{cls}'" for cls in self.new])
+        return "\n".join([f"New {cls}" for cls in self.new])
 
 class ModulePyfference:  # pylint: disable=too-few-public-methods
     """Holds differences between two Python modules"""
