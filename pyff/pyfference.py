@@ -8,11 +8,12 @@ Change = namedtuple("Change", ["old", "new"])
 class FunctionPyfference:  # pylint: disable=too-few-public-methods
     """Holds differences between Python function definitions"""
     def __init__(self, name: str, names: Tuple[str, str] = None,
-                 implementation: bool = None) -> None:
+                 implementation: bool = None, appeared_import_usage: Iterable[str] = None) -> None:
         self.name = name
         self.names: Change = None
         self.changes: List = []
         self.implementation: bool = implementation
+        self.appeared_import_usage: Iterable[str] = appeared_import_usage
 
         if names:
             self.names = Change(names[0], names[1])
@@ -25,14 +26,19 @@ class FunctionPyfference:  # pylint: disable=too-few-public-methods
         return len(self.changes)
 
     def __str__(self):
+        suffix = ""
+        if self.appeared_import_usage:
+            names = [f"'{name}'" for name in self.appeared_import_usage]
+            suffix = ", newly uses external names " + ", ".join(names)
+
         if self.names and self.implementation:
             old = self.names.old
             new = self.names.new
-            return f"Function '{old}' was renamed to '{new}' and its implementation changed"
+            return f"Function '{old}' renamed to '{new}' and its implementation changed" + suffix
         elif self.names:
-            return f"Function '{self.names.old}' was renamed to '{self.names.new}'"
+            return f"Function '{self.names.old}' renamed to '{self.names.new}'"
         elif self.implementation:
-            return f"Function '{self.name}' changed implementation"
+            return f"Function '{self.name}' changed implementation" + suffix
 
         return ""
 

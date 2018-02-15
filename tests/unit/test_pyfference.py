@@ -9,7 +9,7 @@ def test_function_name_changed():
     assert fpyff.names.new == "second"
     assert fpyff.implementation is None
     assert len(fpyff) == 1
-    assert str(fpyff) == "Function 'first' was renamed to 'second'"
+    assert str(fpyff) == "Function 'first' renamed to 'second'"
 
 def test_function_same():
     fpyff = pf.FunctionPyfference(name="func")
@@ -30,7 +30,7 @@ def test_function_implementation_changed(): # pylint: disable=invalid-name
 def test_function_everything_changed(): # pylint: disable=invalid-name
     fpyff = pf.FunctionPyfference(name="first", names=("first", "second"), implementation=True)
     assert len(fpyff) == 2
-    assert str(fpyff) == "Function 'first' was renamed to 'second' and its implementation changed"
+    assert str(fpyff) == "Function 'first' renamed to 'second' and its implementation changed"
 
 def test_new_from_import():
     mpyff = pf.FromImportPyfference(new={'os': ['path', 'getenv']})

@@ -24,6 +24,10 @@ CHANGED_FUNCTION_MODULE = """import sys
 def func():
     return None"""
 
+IMPORT_USAGE_MODULE = """import sys
+from os import path
+def func():
+    return path()"""
 
 def test_trivial_module():
     difference = pyff_module(TRIVIAL_MODULE, TRIVIAL_MODULE)
@@ -46,3 +50,10 @@ def test_module_with_changed_function(): # pylint: disable=invalid-name
     assert difference is not None
     assert len(difference) == 1
     assert str(difference) == "Function 'func' changed implementation"
+
+def test_module_with_new_external_names_usage(): # pylint: disable=invalid-name
+    difference = pyff_module(IMPORT_MODULE, IMPORT_USAGE_MODULE)
+    assert difference is not None
+    assert len(difference) == 1
+    assert (str(difference) ==
+            "Function 'func' changed implementation, newly uses external names 'path'")

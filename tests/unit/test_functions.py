@@ -3,10 +3,11 @@
 from pytest import raises
 from pyff.pyff import pyff_function
 
-TRIVIAL_FUNCTION = """def function(): pass"""
-TRIVIAL_FUNCTION_2 = """def function2(): pass"""
+TRIVIAL_FUNCTION = """def func(): pass"""
+TRIVIAL_FUNCTION_2 = """def func2(): pass"""
 
-IMPLEMENTED_FUNCTION = """def function(): return None"""
+IMPLEMENTED_FUNCTION = """def func(): return None"""
+FUNCTION_W_EXTERNAL_NAME = """def func(): parser = ArgumentParser()"""
 
 def test_trivial_function():
     difference = pyff_function(TRIVIAL_FUNCTION, TRIVIAL_FUNCTION)
@@ -15,10 +16,10 @@ def test_trivial_function():
 def test_name_change():
     difference = pyff_function(TRIVIAL_FUNCTION, TRIVIAL_FUNCTION_2)
     assert len(difference) == 1
-    assert difference.name == "function"
+    assert difference.name == "func"
     assert difference.names is not None
-    assert difference.names.old == "function"
-    assert difference.names.new == "function2"
+    assert difference.names.old == "func"
+    assert difference.names.new == "func2"
 
 def test_not_functions():
     no_func = "a = 1"
@@ -36,4 +37,13 @@ def test_changed_implementation():
     assert len(difference) == 1
     assert difference.names is None
     assert difference.implementation is not None
-    assert str(difference) == "Function 'function' changed implementation"
+    assert str(difference) == "Function 'func' changed implementation"
+
+def test_changed_implementation_external_name(): # pylint: disable=invalid-name
+    difference = pyff_function(TRIVIAL_FUNCTION, FUNCTION_W_EXTERNAL_NAME, old_imports=[],
+                               new_imports=["ArgumentParser"])
+    assert len(difference) == 1
+    assert difference.names is None
+    assert difference.implementation is not None
+    assert (str(difference) ==
+            "Function 'func' changed implementation, newly uses external names 'ArgumentParser'")
