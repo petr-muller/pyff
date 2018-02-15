@@ -1,18 +1,29 @@
 """Functions for comparison of various Python entities"""
 
-from ast import FunctionDef, parse, NodeVisitor, Module
-from typing import cast, Set
+from ast import FunctionDef, parse, NodeVisitor, Module, dump
+from typing import cast, Set, Dict
 from collections import defaultdict
+from itertools import zip_longest
 
 import pyff.pyfference as pf
 from pyff.summary import ClassSummary
 
 def _pyff_function_ast(first: FunctionDef, second: FunctionDef) -> pf.FunctionPyfference:
     """Return differences between two Python function ASTs, or None if they are identical"""
-    if first.name == second.name:
-        return None
+    names = None
+    if first.name != second.name:
+        names = (first.name, second.name)
 
-    return pf.FunctionPyfference(names=(first.name, second.name))
+    implementation = None
+    for old_statement, new_statement in zip_longest(first.body, second.body):
+        if dump(old_statement) != dump(new_statement):
+            implementation = True
+            break
+
+    if names or implementation:
+        return pf.FunctionPyfference(name=first.name, names=names, implementation=implementation)
+
+    return None
 
 def _pyff_from_imports(first_ast: Module, second_ast: Module) -> pf.FromImportPyfference:
     """Return differences in `from X import Y` statements in two modules"""
@@ -61,12 +72,47 @@ def _pyff_classes(first_ast: Module, second_ast: Module) -> pf.ClassesPyfference
 
     return pf.ClassesPyfference(appeared) if appeared else None
 
+class MethodsExtractor(NodeVisitor):
+    """Extract information about methods in a module"""
+    def __init__(self) -> None:
+        self.names: Set[str] = set()
+        self.functions: Dict[str, FunctionDef] = {}
+
+    def visit_ClassDef(self, node): # pylint: disable=invalid-name
+        """Prevent this visitor from inspecting classes"""
+        pass
+
+    def visit_FunctionDef(self, node): # pylint: disable=invalid-name
+        """Save top-level function definitions"""
+        self.names.add(node.name)
+        self.functions[node.name] = node
+
+def _pyff_functions(first_ast: Module, second_ast: Module) -> pf.FunctionsPyfference:
+    """Return differences in top-level functions in two modules"""
+    first_walker = MethodsExtractor()
+    second_walker = MethodsExtractor()
+
+    first_walker.visit(first_ast)
+    second_walker.visit(second_ast)
+
+    both = first_walker.names.intersection(second_walker.names)
+    differences = {}
+    for function in both:
+        difference = _pyff_function_ast(first_walker.functions[function],
+                                        second_walker.functions[function])
+        if difference:
+            differences[function] = difference
+
+    return pf.FunctionsPyfference(changed=differences) if differences else None
+
+
 def _pyff_modules(first_ast: Module, second_ast: Module) -> pf.ModulePyfference:
     from_imports = _pyff_from_imports(first_ast, second_ast)
     classes = _pyff_classes(first_ast, second_ast)
+    functions = _pyff_functions(first_ast, second_ast)
 
-    if from_imports or classes:
-        return pf.ModulePyfference(from_imports, classes)
+    if from_imports or classes or functions:
+        return pf.ModulePyfference(from_imports, classes, functions)
 
     return None
 

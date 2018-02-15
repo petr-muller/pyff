@@ -3,26 +3,26 @@
 from pyff.pyff import pyff_module
 
 TRIVIAL_MODULE = """import sys
-
 def func():
     pass"""
 
 IMPORT_MODULE = """import sys
 from os import path
-
 def func():
     pass"""
 
 CLASSES_MODULE = """import sys
-
 class Klass:
     def method(self):
         pass
     def _method(self):
         pass
-
 def func():
     pass"""
+
+CHANGED_FUNCTION_MODULE = """import sys
+def func():
+    return None"""
 
 
 def test_trivial_module():
@@ -40,3 +40,9 @@ def test_module_with_new_class():
     assert difference is not None
     assert len(difference) == 1
     assert str(difference) == "New class 'Klass' with 1 public methods"
+
+def test_module_with_changed_function(): # pylint: disable=invalid-name
+    difference = pyff_module(TRIVIAL_MODULE, CHANGED_FUNCTION_MODULE)
+    assert difference is not None
+    assert len(difference) == 1
+    assert str(difference) == "Function 'func' changed implementation"
