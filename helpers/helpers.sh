@@ -5,12 +5,12 @@ example() {
 }
 
 ft() {
-  cat fast-setup.cfg > setup.cfg
+  cat helpers/fast-setup.cfg > setup.cfg
   python setup.py test
 }
 
 st() {
-  cat strict-setup.cfg > setup.cfg
+  cat helpers/strict-setup.cfg > setup.cfg
   python setup.py test
 }
 
