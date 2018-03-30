@@ -1,7 +1,7 @@
 # pylint: disable=missing-docstring
 
-from colorama import Fore, Style
 from pytest import raises
+from colorama import Fore, Style
 from pyff.pyfference import HL_OPEN, HL_CLOSE
 from pyff.run import highlight
 
