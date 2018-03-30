@@ -21,6 +21,6 @@ setup(
     packages=['pyff'],
     setup_requires=['pytest-runner', 'pytest-bdd', 'pytest-pylint', 'pytest-mypy', 'pytest-cov'],
     tests_require=['pytest', 'pylint', 'mypy'],
-    install_requires=[],
+    install_requires=['colorama'],
     entry_points={'console_scripts': ['pyff=pyff.run:main']}
 )

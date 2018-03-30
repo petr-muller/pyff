@@ -8,4 +8,4 @@ def test_class_summary():
     assert cls.methods == 5
     assert cls.private_methods == 2
     assert cls.public_methods == 3
-    assert str(cls) == "class 'classname' with 3 public methods"
+    assert str(cls) == "class ``classname'' with 3 public methods"

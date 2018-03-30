@@ -9,7 +9,7 @@ def test_function_name_changed():
     assert fpyff.names.new == "second"
     assert fpyff.implementation is None
     assert len(fpyff) == 1
-    assert str(fpyff) == "Function 'first' renamed to 'second'"
+    assert str(fpyff) == "Function ``first'' renamed to ``second''"
 
 def test_function_same():
     fpyff = pf.FunctionPyfference(name="func")
@@ -25,24 +25,24 @@ def test_function_implementation_changed(): # pylint: disable=invalid-name
     assert fpyff.names is None
     assert fpyff.implementation is True
     assert len(fpyff) == 1
-    assert str(fpyff) == "Function 'func' changed implementation"
+    assert str(fpyff) == "Function ``func'' changed implementation"
 
 def test_function_everything_changed(): # pylint: disable=invalid-name
     fpyff = pf.FunctionPyfference(name="first", names=("first", "second"), implementation=True)
     assert len(fpyff) == 2
-    assert str(fpyff) == "Function 'first' renamed to 'second' and its implementation changed"
+    assert str(fpyff) == "Function ``first'' renamed to ``second'' and its implementation changed"
 
 def test_new_from_import():
     mpyff = pf.FromImportPyfference(new={'os': ['path', 'getenv']})
     assert mpyff.new == {'os': ['path', 'getenv']}
-    assert str(mpyff) == "Added import of new names 'path', 'getenv' from new package 'os'"
+    assert str(mpyff) == "Added import of new names ``path'', ``getenv'' from new package ``os''"
 
 def test_module_with_from_imports():
     fip = pf.FromImportPyfference(new={'os': ['path', 'getenv']})
     mpyff = pf.ModulePyfference(from_imports=fip)
     assert mpyff.from_imports is not None
     assert len(mpyff) == 1
-    assert str(mpyff) == "Added import of new names 'path', 'getenv' from new package 'os'"
+    assert str(mpyff) == "Added import of new names ``path'', ``getenv'' from new package ``os''"
 
 def test_new_classes():
     cpyff = pf.ClassesPyfference(new=["NewClass", "NewClass2"])
@@ -60,7 +60,7 @@ def test_functions_changed():
     fpyff = pf.FunctionPyfference(name='func', implementation=True)
     fspyff = pf.FunctionsPyfference(changed={'func': fpyff})
     assert fspyff.changed is not None
-    assert str(fspyff) == "Function 'func' changed implementation"
+    assert str(fspyff) == "Function ``func'' changed implementation"
 
 def test_module_with_changed_functions(): # pylint: disable=invalid-name
     fpyff = pf.FunctionPyfference(name='func', implementation=True)
@@ -68,4 +68,4 @@ def test_module_with_changed_functions(): # pylint: disable=invalid-name
     mpyff = pf.ModulePyfference(functions=fspyff)
     assert mpyff.functions is not None
     assert len(mpyff) == 1
-    assert str(mpyff) == "Function 'func' changed implementation"
+    assert str(mpyff) == "Function ``func'' changed implementation"

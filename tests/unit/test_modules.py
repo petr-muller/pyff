@@ -37,23 +37,23 @@ def test_changed_module():
     difference = pyff_module(TRIVIAL_MODULE, IMPORT_MODULE)
     assert difference is not None
     assert len(difference) == 1
-    assert str(difference) == "Added import of new names 'path' from new package 'os'"
+    assert str(difference) == "Added import of new names ``path'' from new package ``os''"
 
 def test_module_with_new_class():
     difference = pyff_module(TRIVIAL_MODULE, CLASSES_MODULE)
     assert difference is not None
     assert len(difference) == 1
-    assert str(difference) == "New class 'Klass' with 1 public methods"
+    assert str(difference) == "New class ``Klass'' with 1 public methods"
 
 def test_module_with_changed_function(): # pylint: disable=invalid-name
     difference = pyff_module(TRIVIAL_MODULE, CHANGED_FUNCTION_MODULE)
     assert difference is not None
     assert len(difference) == 1
-    assert str(difference) == "Function 'func' changed implementation"
+    assert str(difference) == "Function ``func'' changed implementation"
 
 def test_module_with_new_external_names_usage(): # pylint: disable=invalid-name
     difference = pyff_module(IMPORT_MODULE, IMPORT_USAGE_MODULE)
     assert difference is not None
     assert len(difference) == 1
     assert (str(difference) ==
-            "Function 'func' changed implementation, newly uses external names 'path'")
+            "Function ``func'' changed implementation, newly uses external names ``path''")
