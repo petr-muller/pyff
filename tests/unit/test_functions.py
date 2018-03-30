@@ -37,7 +37,7 @@ def test_changed_implementation():
     assert len(difference) == 1
     assert difference.names is None
     assert difference.implementation is not None
-    assert str(difference) == "Function 'func' changed implementation"
+    assert str(difference) == "Function ``func'' changed implementation"
 
 def test_changed_implementation_external_name(): # pylint: disable=invalid-name
     difference = pyff_function(TRIVIAL_FUNCTION, FUNCTION_W_EXTERNAL_NAME, old_imports=[],
@@ -46,4 +46,4 @@ def test_changed_implementation_external_name(): # pylint: disable=invalid-name
     assert difference.names is None
     assert difference.implementation is not None
     assert (str(difference) ==
-            "Function 'func' changed implementation, newly uses external names 'ArgumentParser'")
+            "Function ``func'' changed implementation, newly uses external names ``ArgumentParser''")  # pylint: disable=line-too-long

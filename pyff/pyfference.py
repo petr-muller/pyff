@@ -1,7 +1,9 @@
 """Classes holding information about differences between individual Python elements"""
+
 from collections import namedtuple
 from typing import Tuple, List, Dict, Iterable
 from pyff.summary import ClassSummary
+from pyff.kitchensink import HL_OPEN, HL_CLOSE
 
 Change = namedtuple("Change", ["old", "new"])
 
@@ -20,7 +22,7 @@ class FunctionPyfference:  # pylint: disable=too-few-public-methods
             self.changes.append(self.names)
 
         if implementation:
-            self.changes.append(f"Function '{self.name}' changed implementation")
+            self.changes.append(f"Function {HL_OPEN}{self.name}{HL_CLOSE} changed implementation")
 
     def __len__(self):
         return len(self.changes)
@@ -28,17 +30,19 @@ class FunctionPyfference:  # pylint: disable=too-few-public-methods
     def __str__(self):
         suffix = ""
         if self.appeared_import_usage:
-            names = [f"'{name}'" for name in self.appeared_import_usage]
+            names = [f"{HL_OPEN}{name}{HL_CLOSE}" for name in self.appeared_import_usage]
             suffix = ", newly uses external names " + ", ".join(names)
 
         if self.names and self.implementation:
-            old = self.names.old
-            new = self.names.new
-            return f"Function '{old}' renamed to '{new}' and its implementation changed" + suffix
+            old = f"{HL_OPEN}{self.names.old}{HL_CLOSE}"
+            new = f"{HL_OPEN}{self.names.new}{HL_CLOSE}"
+            return f"Function {old} renamed to {new} and its implementation changed" + suffix
         elif self.names:
-            return f"Function '{self.names.old}' renamed to '{self.names.new}'"
+            old = f"{HL_OPEN}{self.names.old}{HL_CLOSE}"
+            new = f"{HL_OPEN}{self.names.new}{HL_CLOSE}"
+            return f"Function {old} renamed to {new}"
         elif self.implementation:
-            return f"Function '{self.name}' changed implementation" + suffix
+            return f"Function {HL_OPEN}{self.name}{HL_CLOSE} changed implementation" + suffix
 
         return ""
 
@@ -48,11 +52,11 @@ class FromImportPyfference: # pylint: disable=too-few-public-methods
         self.new = new
 
     def __str__(self):
-        template = "Added import of new names {names} from new package '{package}'"
+        template = "Added import of new names {names} from new package {package}"
         lines = []
         for package, values in self.new.items():
-            names = ", ".join([f"'{name}'" for name in values])
-            lines.append(template.format(names=names, package=package))
+            names = ", ".join([f"{HL_OPEN}{name}{HL_CLOSE}" for name in values])
+            lines.append(template.format(names=names, package=f"{HL_OPEN}{package}{HL_CLOSE}"))
 
         return "\n".join(lines)
 
