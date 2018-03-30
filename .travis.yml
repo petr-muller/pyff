@@ -13,7 +13,7 @@ before_script:
   - ./cc-test-reporter before-build
 
 script:
-  - python setup.py test
+  - python setup.py test && mypy pyff
 
 after_success:
   - python-codacy-coverage -r coverage.xml
