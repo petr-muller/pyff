@@ -29,6 +29,19 @@ from os import path
 def func():
     return path()"""
 
+EXTERNAL_INHERITANCE_CLASS_MODULE = """import sys
+from module import BaseKlass
+
+class Klass(BaseKlass):
+    pass
+
+class KildKlass(Klass):
+    pass
+
+def func():
+    pass
+"""
+
 def test_trivial_module():
     difference = pyff_module(TRIVIAL_MODULE, TRIVIAL_MODULE)
     assert difference is None
@@ -37,13 +50,22 @@ def test_changed_module():
     difference = pyff_module(TRIVIAL_MODULE, IMPORT_MODULE)
     assert difference is not None
     assert len(difference) == 1
-    assert str(difference) == "Added import of new names ``path'' from new package ``os''"
+    assert str(difference) == "New imported names ``path'' from new package ``os''"
 
 def test_module_with_new_class():
     difference = pyff_module(TRIVIAL_MODULE, CLASSES_MODULE)
     assert difference is not None
     assert len(difference) == 1
     assert str(difference) == "New class ``Klass'' with 1 public methods"
+
+def test_module_with_inherited_classes(): # pylint: disable=invalid-name
+    difference = pyff_module(TRIVIAL_MODULE, EXTERNAL_INHERITANCE_CLASS_MODULE)
+    assert difference is not None
+    assert len(difference) == 3
+    assert (sorted(str(difference).split('\n')) ==
+            ["New class ``KildKlass'' derived from local ``Klass'' with 0 public methods",
+             "New class ``Klass'' derived from imported ``BaseKlass'' with 0 public methods",
+             "New imported names ``BaseKlass'' from new package ``module''"])
 
 def test_module_with_changed_function(): # pylint: disable=invalid-name
     difference = pyff_module(TRIVIAL_MODULE, CHANGED_FUNCTION_MODULE)

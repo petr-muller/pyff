@@ -1,12 +1,12 @@
 """Functions for comparison of various Python entities"""
 
 from ast import FunctionDef, parse, NodeVisitor, Module, dump
-from typing import cast, Set, Dict, Iterable
+from typing import cast, Set, Dict, Iterable, List
 from collections import defaultdict
 from itertools import zip_longest
 
 import pyff.pyfference as pf
-from pyff.summary import ClassSummary
+from pyff.summary import ClassSummary, LocalBaseClass, ImportedBaseClass
 
 class ExternalNamesExtractor(NodeVisitor):
     """Collects information about imported name usage in function"""
@@ -78,13 +78,28 @@ class ClassesExtractor(NodeVisitor):
         self.classes: Set[ClassSummary] = set()
         self._private_methods: int = 0
         self._methods: int = 0
+        self._imported_names: Set[str] = set()
+
+    def visit_ImportFrom(self, node): # pylint: disable=invalid-name
+        """Save imported names"""
+        for name in node.names:
+            self._imported_names.add(name.name)
 
     def visit_ClassDef(self, node): # pylint: disable=invalid-name
         """Save information about classes that appeared in a module"""
         self._private_methods: int = 0
         self._methods: int = 0
         self.generic_visit(node)
-        self.classes.add(ClassSummary(node.name, self._methods, self._private_methods))
+
+        bases: List[str] = []
+        for base in node.bases:
+            if base.id in self._imported_names:
+                bases.append(ImportedBaseClass(base.id))
+            else:
+                bases.append(LocalBaseClass(base.id))
+
+        summary = ClassSummary(node.name, self._methods, self._private_methods, baseclasses=bases)
+        self.classes.add(summary)
 
     def visit_FunctionDef(self, node): # pylint: disable=invalid-name
         """Save counts of encountered private/public methods"""
@@ -148,6 +163,7 @@ def _pyff_functions(first_ast: Module, second_ast: Module) -> pf.FunctionsPyffer
 
 def _pyff_modules(first_ast: Module, second_ast: Module) -> pf.ModulePyfference:
     from_imports = _pyff_from_imports(first_ast, second_ast)
+
     classes = _pyff_classes(first_ast, second_ast)
     functions = _pyff_functions(first_ast, second_ast)
 
