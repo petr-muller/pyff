@@ -35,32 +35,35 @@ def test_function_everything_changed(): # pylint: disable=invalid-name
 def test_new_from_import():
     mpyff = pf.FromImportPyfference(new={'os': ['path', 'getenv']})
     assert mpyff.new == {'os': ['path', 'getenv']}
-    assert str(mpyff) == "Added import of new names ``path'', ``getenv'' from new package ``os''"
+    assert str(mpyff) == "New imported names ``path'', ``getenv'' from new package ``os''"
+    assert len(mpyff) == 1
 
 def test_module_with_from_imports():
     fip = pf.FromImportPyfference(new={'os': ['path', 'getenv']})
     mpyff = pf.ModulePyfference(from_imports=fip)
     assert mpyff.from_imports is not None
     assert len(mpyff) == 1
-    assert str(mpyff) == "Added import of new names ``path'', ``getenv'' from new package ``os''"
+    assert str(mpyff) == "New imported names ``path'', ``getenv'' from new package ``os''"
 
 def test_new_classes():
     cpyff = pf.ClassesPyfference(new=["NewClass", "NewClass2"])
     assert cpyff.new == ["NewClass", "NewClass2"]
     assert str(cpyff) == "New NewClass\nNew NewClass2"
+    assert len(cpyff) == 2
 
 def test_module_with_new_classes():
-    cpyff = pf.ClassesPyfference(new=["NewClass"])
+    cpyff = pf.ClassesPyfference(new=["NewClass", "NewClass2"])
     mpyff = pf.ModulePyfference(classes=cpyff)
     assert mpyff.classes is not None
-    assert len(mpyff) == 1
-    assert str(mpyff) == "New NewClass"
+    assert len(mpyff) == 2
+    assert str(mpyff) == "New NewClass\nNew NewClass2"
 
 def test_functions_changed():
     fpyff = pf.FunctionPyfference(name='func', implementation=True)
     fspyff = pf.FunctionsPyfference(changed={'func': fpyff})
     assert fspyff.changed is not None
     assert str(fspyff) == "Function ``func'' changed implementation"
+    assert len(fspyff) == 1
 
 def test_module_with_changed_functions(): # pylint: disable=invalid-name
     fpyff = pf.FunctionPyfference(name='func', implementation=True)

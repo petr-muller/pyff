@@ -1,7 +1,7 @@
 """Classes holding information about differences between individual Python elements"""
 
 from collections import namedtuple
-from typing import Tuple, List, Dict, Iterable
+from typing import Tuple, List, Dict, Iterable, Set
 from pyff.summary import ClassSummary
 from pyff.kitchensink import HL_OPEN, HL_CLOSE
 
@@ -52,7 +52,7 @@ class FromImportPyfference: # pylint: disable=too-few-public-methods
         self.new = new
 
     def __str__(self):
-        template = "Added import of new names {names} from new package {package}"
+        template = "New imported names {names} from new package {package}"
         lines = []
         for package, values in self.new.items():
             names = ", ".join([f"{HL_OPEN}{name}{HL_CLOSE}" for name in values])
@@ -60,23 +60,31 @@ class FromImportPyfference: # pylint: disable=too-few-public-methods
 
         return "\n".join(lines)
 
+    def __len__(self) -> int:
+        return len(self.new)
+
 class FunctionsPyfference: # pylint: disable=too-few-public-methods
     """Holds differences between top-level functions in a module"""
     def __init__(self, changed: Dict[str, FunctionPyfference]) -> None:
         self.changed = changed
 
     def __str__(self) -> str:
-
         return "\n".join([str(change) for change in self.changed.values()])
+
+    def __len__(self) -> int:
+        return len(self.changed)
 
 class ClassesPyfference: # pylint: disable=too-few-public-methods
 
     """Holds differences between classes defined in a module"""
-    def __init__(self, new: Iterable[ClassSummary]) -> None:
-        self.new: Iterable[ClassSummary] = new
+    def __init__(self, new: Set[ClassSummary]) -> None:
+        self.new: Set[ClassSummary] = new
 
     def __str__(self):
         return "\n".join([f"New {cls}" for cls in self.new])
+
+    def __len__(self) -> int:
+        return len(self.new)
 
 class ModulePyfference:  # pylint: disable=too-few-public-methods
     """Holds differences between two Python modules"""
@@ -101,7 +109,7 @@ class ModulePyfference:  # pylint: disable=too-few-public-methods
             self.changes.append(self.functions)
 
     def __len__(self):
-        return len(self.changes)
+        return sum([len(change) for change in self.changes])
 
     def __str__(self):
         return "\n".join([str(change) for change in self.changes])
