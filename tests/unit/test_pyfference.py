@@ -35,7 +35,7 @@ def test_function_everything_changed(): # pylint: disable=invalid-name
 def test_new_from_import():
     mpyff = pf.FromImportPyfference(new={'os': ['path', 'getenv']})
     assert mpyff.new == {'os': ['path', 'getenv']}
-    assert str(mpyff) == "New imported names ``path'', ``getenv'' from new package ``os''"
+    assert str(mpyff) == "New imported names ``getenv'', ``path'' from new package ``os''"
     assert len(mpyff) == 1
 
 def test_module_with_from_imports():
@@ -43,7 +43,7 @@ def test_module_with_from_imports():
     mpyff = pf.ModulePyfference(from_imports=fip)
     assert mpyff.from_imports is not None
     assert len(mpyff) == 1
-    assert str(mpyff) == "New imported names ``path'', ``getenv'' from new package ``os''"
+    assert str(mpyff) == "New imported names ``getenv'', ``path'' from new package ``os''"
 
 def test_new_classes():
     cpyff = pf.ClassesPyfference(new=["NewClass", "NewClass2"])

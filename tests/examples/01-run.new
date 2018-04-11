@@ -1,3 +1,13 @@
+# Expected output for `clitest`
+# $ . helpers/helpers.sh
+# $
+#
+# $ example_quotes 01
+# New imported names 'Action', 'ArgumentParser' from new package 'argparse'
+# New class 'ParsePlayerAction' derived from imported 'Action' with 0 public methods
+# Function 'main' changed implementation, newly uses external names 'ArgumentParser'
+# $
+
 from argparse import Action, ArgumentParser
 
 class ParsePlayerAction(Action):

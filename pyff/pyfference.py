@@ -54,8 +54,8 @@ class FromImportPyfference: # pylint: disable=too-few-public-methods
     def __str__(self):
         template = "New imported names {names} from new package {package}"
         lines = []
-        for package, values in self.new.items():
-            names = ", ".join([f"{HL_OPEN}{name}{HL_CLOSE}" for name in values])
+        for package, values in sorted(self.new.items()):
+            names = ", ".join([f"{HL_OPEN}{name}{HL_CLOSE}" for name in sorted(values)])
             lines.append(template.format(names=names, package=f"{HL_OPEN}{package}{HL_CLOSE}"))
 
         return "\n".join(lines)

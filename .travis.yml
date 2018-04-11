@@ -13,7 +13,7 @@ before_script:
   - ./cc-test-reporter before-build
 
 script:
-  - python setup.py test && mypy pyff
+  - python setup.py test && helpers/clitest --prefix '# ' --diff-options '-u' tests/examples/*.new && mypy pyff
 
 after_success:
   - python-codacy-coverage -r coverage.xml
