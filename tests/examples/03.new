@@ -1,3 +1,15 @@
+# Expected output for `clitest`
+# $ . helpers/helpers.sh
+# $
+#
+# $ example_quotes 03
+# New imported names 'Path' from new package 'pathlib'
+# New imported names 'Sequence' from new package 'typing'
+# New imported names 'Game' from new package 'vtes.game'
+# New imported names 'GameStore', 'load_store' from new package 'vtes.store'
+# New class 'ParsePlayerAction' derived from imported 'Action' with 0 public methods
+# Function 'main' changed implementation, newly uses external names 'Path'
+
 """Entry point for the `vtes` command"""
 
 from pathlib import Path
