@@ -1,7 +1,7 @@
 """Functions for comparison of various Python entities"""
 
 from ast import FunctionDef, parse, NodeVisitor, Module, dump
-from typing import cast, Set, Dict, Iterable, List
+from typing import cast, Set, Dict, Iterable, List, Optional
 from collections import defaultdict
 from itertools import zip_longest
 
@@ -10,8 +10,8 @@ from pyff.summary import ClassSummary, LocalBaseClass, ImportedBaseClass
 
 class ExternalNamesExtractor(NodeVisitor):
     """Collects information about imported name usage in function"""
-    def __init__(self, imported_names: Iterable[str]) -> None:
-        self.imported_names: Iterable[str] = imported_names
+    def __init__(self, imported_names: Optional[Iterable[str]]) -> None:
+        self.imported_names: Optional[Iterable[str]] = imported_names
         self.names: Set[str] = set()
 
     def visit_Name(self, node): # pylint: disable=invalid-name
@@ -20,8 +20,8 @@ class ExternalNamesExtractor(NodeVisitor):
             self.names.add(node.id)
 
 def _compare_import_usage(old: FunctionDef, new: FunctionDef,
-                          old_imports: Iterable[str] = None,
-                          new_imports: Iterable[str] = None) -> Iterable[str]:
+                          old_imports: Optional[Iterable[str]] = None,
+                          new_imports: Optional[Iterable[str]] = None) -> Iterable[str]:
     first_walker = ExternalNamesExtractor(old_imports)
     second_walker = ExternalNamesExtractor(new_imports)
 
@@ -34,7 +34,7 @@ def _compare_import_usage(old: FunctionDef, new: FunctionDef,
 
 def _pyff_function_ast(first: FunctionDef, second: FunctionDef,
                        old_imports: Iterable[str] = None,
-                       new_imports: Iterable[str] = None) -> pf.FunctionPyfference:
+                       new_imports: Iterable[str] = None) -> Optional[pf.FunctionPyfference]:
     """Return differences between two Python function ASTs, or None if they are identical"""
     names = None
     if first.name != second.name:
@@ -46,10 +46,9 @@ def _pyff_function_ast(first: FunctionDef, second: FunctionDef,
             implementation = True
             break
 
+    appeared_import_usage: Optional[Iterable[str]] = None
     if old_imports or new_imports:
         appeared_import_usage = _compare_import_usage(first, second, old_imports, new_imports)
-    else:
-        appeared_import_usage = None
 
     if names or implementation:
         return pf.FunctionPyfference(name=first.name, names=names, implementation=implementation,
@@ -57,7 +56,7 @@ def _pyff_function_ast(first: FunctionDef, second: FunctionDef,
 
     return None
 
-def _pyff_from_imports(first_ast: Module, second_ast: Module) -> pf.FromImportPyfference:
+def _pyff_from_imports(first_ast: Module, second_ast: Module) -> Optional[pf.FromImportPyfference]:
     """Return differences in `from X import Y` statements in two modules"""
     first_walker = ImportFromExtractor()
     second_walker = ImportFromExtractor()
@@ -107,7 +106,7 @@ class ClassesExtractor(NodeVisitor):
             self._private_methods += 1
         self._methods += 1
 
-def _pyff_classes(first_ast: Module, second_ast: Module) -> pf.ClassesPyfference:
+def _pyff_classes(first_ast: Module, second_ast: Module) -> Optional[pf.ClassesPyfference]:
     """Return differences in classes defined in two modules"""
     first_walker = ClassesExtractor()
     second_walker = ClassesExtractor()
@@ -140,7 +139,7 @@ class MethodsExtractor(NodeVisitor):
         self.names.add(node.name)
         self.functions[node.name] = node
 
-def _pyff_functions(first_ast: Module, second_ast: Module) -> pf.FunctionsPyfference:
+def _pyff_functions(first_ast: Module, second_ast: Module) -> Optional[pf.FunctionsPyfference]:
     """Return differences in top-level functions in two modules"""
     first_walker = MethodsExtractor()
     second_walker = MethodsExtractor()
@@ -161,7 +160,7 @@ def _pyff_functions(first_ast: Module, second_ast: Module) -> pf.FunctionsPyffer
     return pf.FunctionsPyfference(changed=differences) if differences else None
 
 
-def _pyff_modules(first_ast: Module, second_ast: Module) -> pf.ModulePyfference:
+def _pyff_modules(first_ast: Module, second_ast: Module) -> Optional[pf.ModulePyfference]:
     from_imports = _pyff_from_imports(first_ast, second_ast)
 
     classes = _pyff_classes(first_ast, second_ast)
@@ -184,7 +183,7 @@ class ImportFromExtractor(NodeVisitor):
 
 def pyff_function(first: str, second: str,
                   old_imports: Iterable[str] = None,
-                  new_imports: Iterable[str] = None) -> pf.FunctionPyfference:
+                  new_imports: Iterable[str] = None) -> Optional[pf.FunctionPyfference]:
     """Return differences between two Python functions, or None if they are identical"""
     first_ast = parse(first).body
     second_ast = parse(second).body
@@ -197,7 +196,7 @@ def pyff_function(first: str, second: str,
     return _pyff_function_ast(cast(FunctionDef, first_ast[0]), cast(FunctionDef, second_ast[0]),
                               old_imports, new_imports)
 
-def pyff_module(first: str, second: str) -> pf.ModulePyfference:
+def pyff_module(first: str, second: str) -> Optional[pf.ModulePyfference]:
     """Return difference between two Python modules, or None if they are identical"""
     # pylint: disable=unused-variable
     first_ast = parse(first)

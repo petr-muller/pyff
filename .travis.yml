@@ -10,7 +10,7 @@ install:
   - chmod +x ./cc-test-reporter
 
 before_script:
-  - ./cc-test-reporter before-build
+  - ./cc-test-reporter before-build && python setup.py develop
 
 script:
   - python setup.py test && helpers/clitest --prefix '# ' --diff-options '-u' tests/examples/*.new && mypy pyff
