@@ -1,6 +1,6 @@
 """Contains class with summary information about various Python entities"""
 
-from typing import List, Union
+from typing import List, Union, Optional
 from pyff.kitchensink import HL_OPEN, HL_CLOSE
 
 class LocalBaseClass:
@@ -21,15 +21,17 @@ class ImportedBaseClass:
     def __str__(self):
         return f"imported {HL_OPEN}{self.name}{HL_CLOSE}"
 
+BaseClassType = Union[LocalBaseClass, ImportedBaseClass] # pylint: disable=invalid-name
+
 class ClassSummary(): # pylint: disable=too-few-public-methods
     """Contains summary information about a class"""
     def __init__(self, name: str, methods: int, private: int,
-                 baseclasses: List[Union[LocalBaseClass, ImportedBaseClass]] = None) -> None:
+                 baseclasses: Optional[List[BaseClassType]] = None) -> None:
         self.name: str = name
         self.methods: int = methods
         self.private_methods: int = private
         self.public_methods: int = methods - private
-        self.baseclasses: List[Union[LocalBaseClass, ImportedBaseClass]] = baseclasses
+        self.baseclasses: Optional[List[BaseClassType]] = baseclasses
 
     def __str__(self) -> str:
         class_part: str = f"class {HL_OPEN}{self.name}{HL_CLOSE}"

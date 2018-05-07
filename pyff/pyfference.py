@@ -1,7 +1,7 @@
 """Classes holding information about differences between individual Python elements"""
 
 from collections import namedtuple
-from typing import Tuple, List, Dict, Iterable, Set
+from typing import Tuple, List, Dict, Iterable, Set, Optional
 from pyff.summary import ClassSummary
 from pyff.kitchensink import HL_OPEN, HL_CLOSE
 
@@ -12,10 +12,10 @@ class FunctionPyfference:  # pylint: disable=too-few-public-methods
     def __init__(self, name: str, names: Tuple[str, str] = None,
                  implementation: bool = None, appeared_import_usage: Iterable[str] = None) -> None:
         self.name = name
-        self.names: Change = None
+        self.names: Optional[Change] = None
         self.changes: List = []
-        self.implementation: bool = implementation
-        self.appeared_import_usage: Iterable[str] = appeared_import_usage
+        self.implementation: Optional[bool] = implementation
+        self.appeared_import_usage: Optional[Iterable[str]] = appeared_import_usage
 
         if names:
             self.names = Change(names[0], names[1])
@@ -88,13 +88,13 @@ class ClassesPyfference: # pylint: disable=too-few-public-methods
 
 class ModulePyfference:  # pylint: disable=too-few-public-methods
     """Holds differences between two Python modules"""
-    def __init__(self, from_imports: FromImportPyfference = None,
-                 classes: ClassesPyfference = None,
-                 functions: FunctionsPyfference = None) -> None:
+    def __init__(self, from_imports: Optional[FromImportPyfference] = None,
+                 classes: Optional[ClassesPyfference] = None,
+                 functions: Optional[FunctionsPyfference] = None) -> None:
         self.changes: List = []
-        self.from_imports: FromImportPyfference = None
-        self.classes: ClassesPyfference = None
-        self.functions: FunctionsPyfference = None
+        self.from_imports: Optional[FromImportPyfference] = None
+        self.classes: Optional[ClassesPyfference] = None
+        self.functions: Optional[FunctionsPyfference] = None
 
         if from_imports:
             self.from_imports = from_imports
