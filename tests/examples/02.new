@@ -4,7 +4,6 @@
 #
 # $ example_quotes 02
 # New imported names 'Sequence' from new package 'typing'
-# New class 'Game' with 0 public methods
 # $
 
 """Log of a single VtES game"""

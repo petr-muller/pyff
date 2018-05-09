@@ -7,7 +7,6 @@
 # New imported names 'Sequence' from new package 'typing'
 # New imported names 'Game' from new package 'vtes.game'
 # New imported names 'GameStore', 'load_store' from new package 'vtes.store'
-# New class 'ParsePlayerAction' derived from imported 'Action' with 0 public methods
 # New function 'add_command'
 # New function 'games_command'
 # Function 'main' changed implementation, newly uses external names 'Path'
