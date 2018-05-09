@@ -2,7 +2,7 @@
 
 from collections import namedtuple
 from typing import Tuple, List, Dict, Iterable, Set, Optional
-from pyff.summary import ClassSummary
+from pyff.summary import ClassSummary, FunctionSummary
 from pyff.kitchensink import HL_OPEN, HL_CLOSE
 
 Change = namedtuple("Change", ["old", "new"])
@@ -65,14 +65,18 @@ class FromImportPyfference: # pylint: disable=too-few-public-methods
 
 class FunctionsPyfference: # pylint: disable=too-few-public-methods
     """Holds differences between top-level functions in a module"""
-    def __init__(self, changed: Dict[str, FunctionPyfference]) -> None:
-        self.changed = changed
+    def __init__(self, new: Set[FunctionSummary], changed: Dict[str, FunctionPyfference]) -> None:
+        self.changed: Dict[str, FunctionPyfference] = changed
+        self.new: Set[FunctionSummary] = new
 
     def __str__(self) -> str:
-        return "\n".join([str(change) for change in self.changed.values()])
+        changed = "\n".join([str(change) for change in self.changed.values()])
+        new = "\n".join([f"New {f}" for f in sorted([str(name) for name in self.new])])
+
+        return "\n".join([changeset for changeset in (new, changed) if changeset])
 
     def __len__(self) -> int:
-        return len(self.changed)
+        return len(self.changed) + len(self.new)
 
 class ClassesPyfference: # pylint: disable=too-few-public-methods
 
@@ -81,7 +85,7 @@ class ClassesPyfference: # pylint: disable=too-few-public-methods
         self.new: Set[ClassSummary] = new
 
     def __str__(self):
-        return "\n".join([f"New {cls}" for cls in self.new])
+        return "\n".join([f"New {cls}" for cls in sorted([str(cls) for cls in self.new])])
 
     def __len__(self) -> int:
         return len(self.new)

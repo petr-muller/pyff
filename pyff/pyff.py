@@ -6,7 +6,7 @@ from collections import defaultdict
 from itertools import zip_longest
 
 import pyff.pyfference as pf
-from pyff.summary import ClassSummary, LocalBaseClass, ImportedBaseClass
+from pyff.summary import ClassSummary, LocalBaseClass, ImportedBaseClass, FunctionSummary
 
 class ExternalNamesExtractor(NodeVisitor):
     """Collects information about imported name usage in function"""
@@ -157,7 +157,13 @@ def _pyff_functions(first_ast: Module, second_ast: Module) -> Optional[pf.Functi
         if difference:
             differences[function] = difference
 
-    return pf.FunctionsPyfference(changed=differences) if differences else None
+    new_names = second_walker.names - first_walker.names
+    new_functions = {FunctionSummary(name) for name in new_names}
+
+    if differences or new_functions:
+        return pf.FunctionsPyfference(changed=differences, new=new_functions)
+
+    return None
 
 
 def _pyff_modules(first_ast: Module, second_ast: Module) -> Optional[pf.ModulePyfference]:

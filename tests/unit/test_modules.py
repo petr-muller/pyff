@@ -6,6 +6,14 @@ TRIVIAL_MODULE = """import sys
 def func():
     pass"""
 
+NEW_FUNCTION_MODULE = """import sys
+def func():
+    pass
+
+def Funktion():
+    pass
+"""
+
 IMPORT_MODULE = """import sys
 from os import path
 def func():
@@ -57,6 +65,12 @@ def test_module_with_new_class():
     assert difference is not None
     assert len(difference) == 1
     assert str(difference) == "New class ``Klass'' with 1 public methods"
+
+def test_module_with_new_function():
+    difference = pyff_module(TRIVIAL_MODULE, NEW_FUNCTION_MODULE)
+    assert difference is not None
+    assert len(difference) == 1
+    assert str(difference) == "New function ``Funktion''"
 
 def test_module_with_inherited_classes(): # pylint: disable=invalid-name
     difference = pyff_module(TRIVIAL_MODULE, EXTERNAL_INHERITANCE_CLASS_MODULE)
