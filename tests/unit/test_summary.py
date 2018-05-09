@@ -1,7 +1,7 @@
 # pylint: disable=missing-docstring
 
 from pytest import raises
-from pyff.summary import ClassSummary, LocalBaseClass, ImportedBaseClass
+from pyff.summary import ClassSummary, LocalBaseClass, ImportedBaseClass, FunctionSummary
 
 def test_class_summary():
     cls = ClassSummary("classname", methods=5, private=2)
@@ -30,3 +30,8 @@ def test_multiple_inherited_summary():
                          baseclasses=[LocalBaseClass("C1"), LocalBaseClass("C2")])
     with raises(Exception):
         str(local)
+
+def test_function_summary():
+    function = FunctionSummary('funktion')
+    assert function.name == 'funktion'
+    assert str(function) == "function ``funktion''"

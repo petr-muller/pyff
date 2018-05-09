@@ -43,3 +43,11 @@ class ClassSummary(): # pylint: disable=too-few-public-methods
             return f"{class_part} derived from {str(self.baseclasses[0])} {method_part}"
 
         raise Exception("Multiple inheritance not yet implemented")
+
+class FunctionSummary(): # pylint: disable=too-few-public-methods
+    """Contains summary information about a function"""
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+    def __str__(self):
+        return f"function {HL_OPEN}{self.name}{HL_CLOSE}"
