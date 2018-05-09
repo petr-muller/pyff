@@ -79,6 +79,11 @@ class ClassesExtractor(NodeVisitor):
         self._methods: int = 0
         self._imported_names: Set[str] = set()
 
+    @property
+    def classnames(self) -> Set[str]:
+        """Return a set of class names in the module"""
+        return {cls.name for cls in self.classes}
+
     def visit_ImportFrom(self, node): # pylint: disable=invalid-name
         """Save imported names"""
         for name in node.names:
@@ -114,7 +119,7 @@ def _pyff_classes(first_ast: Module, second_ast: Module) -> Optional[pf.ClassesP
     first_walker.visit(first_ast)
     second_walker.visit(second_ast)
 
-    appeared = second_walker.classes - first_walker.classes
+    appeared = {cls for cls in second_walker.classes if cls.name not in first_walker.classnames}
 
     return pf.ClassesPyfference(appeared) if appeared else None
 
