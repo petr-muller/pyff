@@ -2,7 +2,7 @@
 
 from pytest import raises
 from colorama import Fore, Style
-from pyff.pyfference import HL_OPEN, HL_CLOSE
+from pyff.kitchensink import HL_OPEN, HL_CLOSE
 from pyff.run import highlight
 
 
