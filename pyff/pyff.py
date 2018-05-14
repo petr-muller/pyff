@@ -6,6 +6,7 @@ from collections import defaultdict
 from itertools import zip_longest
 
 import pyff.pyfference as pf
+import pyff.reduce as pr
 from pyff.summary import ClassSummary, LocalBaseClass, ImportedBaseClass, FunctionSummary
 
 class ExternalNamesExtractor(NodeVisitor):
@@ -65,11 +66,36 @@ def _pyff_from_imports(first_ast: Module, second_ast: Module) -> Optional[pf.Fro
     second_walker.visit(second_ast)
 
     appeared = set(second_walker.modules.keys()) - set(first_walker.modules.keys())
+    gone = set(first_walker.modules.keys()) - set(second_walker.modules.keys())
+
     new = {}
     for module in appeared:
         new[module] = second_walker.modules[module]
 
-    return pf.FromImportPyfference(new) if new else None
+    removed = {}
+    for module in gone:
+        removed[module] = first_walker.modules[module]
+
+    if new or removed:
+        return pf.FromImportPyfference(new=new, removed=removed)
+
+    return None
+
+def _pyff_imports(first_ast: Module, second_ast: Module) -> Optional[pf.ImportPyfference]:
+    """Return differences in `import X` statements in two modules"""
+    first_walker = ImportExtractor()
+    second_walker = ImportExtractor()
+
+    first_walker.visit(first_ast)
+    second_walker.visit(second_ast)
+
+    appeared = second_walker.packages - first_walker.packages
+    gone = first_walker.packages - second_walker.packages
+
+    if appeared or gone:
+        return pf.ImportPyfference(new=appeared, removed=gone)
+
+    return None
 
 class ClassesExtractor(NodeVisitor):
     """Extracts information about classes in a module"""
@@ -173,14 +199,27 @@ def _pyff_functions(first_ast: Module, second_ast: Module) -> Optional[pf.Functi
 
 def _pyff_modules(first_ast: Module, second_ast: Module) -> Optional[pf.ModulePyfference]:
     from_imports = _pyff_from_imports(first_ast, second_ast)
-
+    imports = _pyff_imports(first_ast, second_ast)
     classes = _pyff_classes(first_ast, second_ast)
     functions = _pyff_functions(first_ast, second_ast)
 
-    if from_imports or classes or functions:
-        return pf.ModulePyfference(from_imports, classes, functions)
+    if from_imports or imports or classes or functions:
+        pyfference = pf.ModulePyfference(from_imports, imports, classes, functions)
+        pr.ImportReduce.apply(pyfference)
+        return pyfference
 
     return None
+
+class ImportExtractor(NodeVisitor):
+    """Extracts informatuon about `import X` statements"""
+    def __init__(self):
+        self.packages = set()
+        super(ImportExtractor, self).__init__()
+
+    def visit_Import(self, node): # pylint: disable=invalid-name
+        """Save information about `import X, Y` statements"""
+        for name in node.names:
+            self.packages.add(name.name)
 
 class ImportFromExtractor(NodeVisitor):
     """Extracts information about `from x import y` statements"""
