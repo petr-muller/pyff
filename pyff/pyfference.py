@@ -145,8 +145,9 @@ class ModulePyfference:  # pylint: disable=too-few-public-methods
 
     def simplify(self) -> None:
         """Cleans empty differences, empty sets etc. after manipulation"""
-        if not (self.from_imports.removed or self.from_imports.new):
+        if self.from_imports is not None and not (self.from_imports.removed or
+                                                  self.from_imports.new):
             self.from_imports = None
 
-        if not (self.imports.removed or self.imports.new):
+        if self.imports is not None and not (self.imports.removed or self.imports.new):
             self.imports = None
