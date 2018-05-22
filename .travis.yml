@@ -5,7 +5,8 @@ python:
 cache: pip
 
 install:
-  - pip install codacy-coverage codecov python-coveralls mypy
+  - pip install codacy-coverage codecov python-coveralls
+  - pip install -r requirements-tests.txt
   - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
   - chmod +x ./cc-test-reporter
 
@@ -13,7 +14,7 @@ before_script:
   - ./cc-test-reporter before-build && python setup.py develop
 
 script:
-  - python setup.py test && helpers/clitest --prefix '# ' --diff-options '-u' tests/examples/*.new && mypy pyff
+  - python setup.py test && mypy pyff
 
 after_success:
   - python-codacy-coverage -r coverage.xml

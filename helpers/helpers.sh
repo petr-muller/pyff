@@ -1,5 +1,7 @@
 #!/bin/bash
 
+. v/bin/activate
+
 example() {
   pyff tests/examples/$1*.old tests/examples/$1*.new
 }
@@ -20,8 +22,8 @@ ft() {
 st() {
   cat helpers/strict-setup.cfg > setup.cfg
   python setup.py test &&
-    helpers/clitest --prefix '# ' --diff-options '-u --color=always' tests/examples/*.new &&
-    mypy pyff
+    mypy pyff &&
+    helpers/clitest --prefix '# ' --diff-options '-u --color=always' tests/examples/*.new
 }
 
 cov() {

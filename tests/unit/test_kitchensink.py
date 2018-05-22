@@ -2,8 +2,7 @@
 
 from pytest import raises
 from colorama import Fore, Style
-from pyff.kitchensink import HL_OPEN, HL_CLOSE
-from pyff.run import highlight
+from pyff.kitchensink import HL_OPEN, HL_CLOSE, highlight
 
 
 def test_highlights():
