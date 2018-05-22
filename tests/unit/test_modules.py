@@ -1,100 +1,80 @@
-# pylint: disable=missing-docstring
+# pylint: disable=missing-docstring, no-self-use, too-few-public-methods
 
-from pyff.pyff import pyff_module
+import ast
 
-TRIVIAL_MODULE = """import sys
-def func():
-    pass"""
+import pyff.modules as pm
+import pyff.imports as pi
+import pyff.functions as pf
+import pyff.classes as pc
 
-NEW_FUNCTION_MODULE = """import sys
-def func():
-    pass
+from helpers import parse_imports
 
-def Funktion():
-    pass
-"""
+class TestModulePyfference:
+    def test_sanity(self):
+        old = parse_imports("import four; from five import six, seven")
+        new = parse_imports("import one, two, three; "
+                            "from module import fst, snd; "
+                            "from five import seven; "
+                            "from eight import nine")
+        imports = pi.ImportedNames.compare(old, new)
+        functions = pf.FunctionsPyfference(new={pf.FunctionSummary("function"),
+                                                pf.FunctionSummary("funktion")},
+                                           changed={
+                                               'name': pf.FunctionPyfference("name",
+                                                                             old_name="old_name",
+                                                                             implementation=set())
+                                           })
+        classes = pc.ClassesPyfference(new={"NewClass2", "NewClass"})
+        change = pm.ModulePyfference(imports, classes, functions)
+        assert change.classes is not None
+        assert change.functions is not None
+        assert change.imports is not None
+        assert str(change) == ("Removed import of package ``four''\n"
+                               "New imported packages ``one'', ``three'', ``two''\n"
+                               "Removed import of ``six'' from ``five''\n"
+                               "New imported ``fst'', ``snd'' from new ``module''\n"
+                               "New imported ``nine'' from new ``eight''\n"
+                               "New NewClass\n"
+                               "New NewClass2\n"
+                               "New function ``function''\n"
+                               "New function ``funktion''\n"
+                               "Function ``old_name'' renamed to ``name''")
+        assert change.simplify() is change
 
-IMPORT_MODULE = """import sys
-from os import path
-def func():
-    pass"""
+    def test_empty(self):
+        change = pm.ModulePyfference()
+        assert change.simplify() is None
 
-CLASSES_MODULE = """import sys
-class Klass:
-    def method(self):
-        pass
-    def _method(self):
-        pass
-def func():
-    pass"""
+class TestPyffModule:
+    def test_sanity(self):
+        old = ast.parse("")
+        new = ast.parse("import os\n"
+                        "class Klass:\n"
+                        "    pass\n"
+                        "def funktion():\n"
+                        "    pass")
+        change = pm.pyff_module(old, new)
+        assert change.imports is not None
+        assert change.classes is not None
+        assert change.functions is not None
 
-CHANGED_FUNCTION_MODULE = """import sys
-def func():
-    return None"""
+    def test_same(self):
+        module = ast.parse("import os\n"
+                           "class Klass:\n"
+                           "    pass\n"
+                           "def funktion():\n"
+                           "    pass")
+        assert pm.pyff_module(module, module) is None
 
-IMPORT_USAGE_MODULE = """import sys
-from os import path
-def func():
-    return path()"""
-
-EXTERNAL_INHERITANCE_CLASS_MODULE = """import sys
-from module import BaseKlass
-
-class Klass(BaseKlass):
-    pass
-
-class KildKlass(Klass):
-    pass
-
-def func():
-    pass
-"""
-
-CHANGED_IMPORTS_MODULE = """import sys
-import os
-def func():
-    return path()"""
-
-def test_import_changes():
-    difference = pyff_module(IMPORT_USAGE_MODULE, CHANGED_IMPORTS_MODULE)
-    assert difference is not None
-    assert str(difference) == "New imported package ``os'' (previously, only ``path'' was imported from ``os'')" # pylint: disable=line-too-long
-    # assert str(difference) == "New imported package ``os'' (previously, only ``path'' were imported from ``os'')\nReferences of ``path'' were changed to ``os.path''" # pylint: disable=line-too-long
-
-def test_trivial_module():
-    difference = pyff_module(TRIVIAL_MODULE, TRIVIAL_MODULE)
-    assert difference is None
-
-def test_changed_module():
-    difference = pyff_module(TRIVIAL_MODULE, IMPORT_MODULE)
-    assert difference is not None
-    assert str(difference) == "New imported names ``path'' from new package ``os''"
-
-def test_module_with_new_class():
-    difference = pyff_module(TRIVIAL_MODULE, CLASSES_MODULE)
-    assert difference is not None
-    assert str(difference) == "New class ``Klass'' with 1 public methods"
-
-def test_module_with_new_function():
-    difference = pyff_module(TRIVIAL_MODULE, NEW_FUNCTION_MODULE)
-    assert difference is not None
-    assert str(difference) == "New function ``Funktion''"
-
-def test_module_with_inherited_classes(): # pylint: disable=invalid-name
-    difference = pyff_module(TRIVIAL_MODULE, EXTERNAL_INHERITANCE_CLASS_MODULE)
-    assert difference is not None
-    assert (sorted(str(difference).split('\n')) ==
-            ["New class ``KildKlass'' derived from local ``Klass'' with 0 public methods",
-             "New class ``Klass'' derived from imported ``BaseKlass'' with 0 public methods",
-             "New imported names ``BaseKlass'' from new package ``module''"])
-
-def test_module_with_changed_function(): # pylint: disable=invalid-name
-    difference = pyff_module(TRIVIAL_MODULE, CHANGED_FUNCTION_MODULE)
-    assert difference is not None
-    assert str(difference) == "Function ``func'' changed implementation"
-
-def test_module_with_new_external_names_usage(): # pylint: disable=invalid-name
-    difference = pyff_module(IMPORT_MODULE, IMPORT_USAGE_MODULE)
-    assert difference is not None
-    assert (str(difference) ==
-            "Function ``func'' changed implementation, newly uses external names ``path''")
+class TestPyffModuleCode:
+    def test_sanity(self):
+        old = ""
+        new = ("import os\n"
+               "class Klass:\n"
+               "    pass\n"
+               "def funktion():\n"
+               "    pass")
+        change = pm.pyff_module_code(old, new)
+        assert change.imports is not None
+        assert change.classes is not None
+        assert change.functions is not None

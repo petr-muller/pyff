@@ -3,7 +3,7 @@
 # $
 #
 # $ example_quotes 02
-# New imported names 'Sequence' from new package 'typing'
+# New imported 'Sequence' from new 'typing'
 # $
 
 """Log of a single VtES game"""

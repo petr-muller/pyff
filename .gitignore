@@ -102,3 +102,7 @@ ENV/
 
 # vim
 *.swp
+
+# Eclipse
+.project
+.pydevproject

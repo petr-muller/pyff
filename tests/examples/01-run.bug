@@ -3,7 +3,7 @@
 # $
 #
 # $ example_quotes 01
-# New imported names 'Action', 'ArgumentParser' from new package 'argparse'
+# New imported 'Action', 'ArgumentParser' from new 'argparse'
 # New class 'ParsePlayerAction' derived from imported 'Action' with 0 public methods
 # Function 'main' changed implementation, newly uses external names 'ArgumentParser'
 # $

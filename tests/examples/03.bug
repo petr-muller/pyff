@@ -2,33 +2,32 @@
 # $ . helpers/helpers.sh
 # $
 #
-# $ example_quotes 04
-# Function 'main' changed implementation
-# New imported package 'pathlib' (previously, only 'Path' was imported from 'pathlib')
-# $
-# TODO:
-# - Remove: `Function 'main' changed implementation
-# - Add: References of 'Path' were changed to 'pathlib.Path'
+# $ example_quotes 03
+# New imported 'Path' from new 'pathlib'
+# New imported 'Sequence' from new 'typing'
+# New imported 'Game' from new 'vtes.game'
+# New imported 'GameStore', 'load_store' from new 'vtes.store'
+# New function 'add_command'
+# New function 'games_command'
+# Function 'main' changed implementation, newly uses external names 'Path'
 
 """Entry point for the `vtes` command"""
 
-import pathlib
+from pathlib import Path
 from argparse import Action, ArgumentParser
 from typing import Sequence
 from vtes.game import Game
 from vtes.store import load_store, GameStore
 
-def games_command(journal_path: pathlib.Path) -> None:
+def games_command(journal_path: Path) -> None:
     """List all games in the store"""
     with journal_path.open('rb') as journal_file:
         store = load_store(journal_file)
 
-    # ugh. automatically compute padding size
-    count_size = len(str(len(store)))
-    for index, game in enumerate(store):
-        print(f"{index:{count_size}d}: {game}")
+    for game in store:
+        print(game)
 
-def add_command(players: Sequence[str], journal_path: pathlib.Path) -> None:
+def add_command(players: Sequence[str], journal_path: Path) -> None:
     """Create a new Game and add it to the store"""
     if journal_path.exists():
         with journal_path.open('rb') as journal_file:
@@ -55,12 +54,12 @@ class ParsePlayerAction(Action):
         else:
             raise ValueError("VtES expects three to six players")
 
-def main(): # pragma: no cover
+def main():
     """Entry point for the `vtes` command"""
 
     parser = ArgumentParser()
     parser.add_argument("--journal-file", dest="journal_path",
-                        default=pathlib.Path.home() / ".vtes-journal", type=pathlib.Path)
+                        default=Path.home() / ".vtes-journal", type=Path)
     subcommands = parser.add_subparsers()
 
     add = subcommands.add_parser("add")
@@ -76,4 +75,4 @@ def main(): # pragma: no cover
     command(**vars(args))
 
 if __name__ == "__main__":
-    main() # pragma: no cover
+    main()
