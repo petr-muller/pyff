@@ -23,6 +23,7 @@ class FunctionImplementationChange(Hashable):  # pylint: disable=too-few-public-
     def __hash__(self):
         return hash("FunctionImplementationChange")
 
+
 class ExternalUsageChange(FunctionImplementationChange):  # pylint: disable=too-few-public-methods
     """Represents any change in how function uses external names"""
 
@@ -41,11 +42,11 @@ class ExternalUsageChange(FunctionImplementationChange):  # pylint: disable=too-
         return "\n".join(lines)
 
     def __eq__(self, other):
-        return (self.gone == other.gone and
-                self.appeared == other.appeared)
+        return self.gone == other.gone and self.appeared == other.appeared
 
     def __hash__(self):
         return hash("ExternalUsageChange")
+
 
 class StatementChange(FunctionImplementationChange):  # pylint: disable=too-few-public-methods
     """Represents a change between two statements"""

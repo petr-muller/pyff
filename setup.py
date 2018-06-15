@@ -18,9 +18,9 @@ setup(
         "Programming Language :: Python :: 3.6",
     ],
     keywords="python static_analysis diff",
-    packages=['pyff'],
-    setup_requires=['pytest-runner', 'pytest-bdd', 'pytest-pylint', 'pytest-mypy', 'pytest-cov'],
-    tests_require=['pytest', 'pylint', 'mypy'],
-    install_requires=['colorama'],
-    entry_points={'console_scripts': ['pyff=pyff.run:main']}
+    packages=["pyff"],
+    setup_requires=["pytest-runner", "pytest-bdd", "pytest-pylint", "pytest-mypy", "pytest-cov"],
+    tests_require=["pytest", "pylint", "mypy"],
+    install_requires=["colorama"],
+    entry_points={"console_scripts": ["pyff=pyff.run:main"]},
 )
