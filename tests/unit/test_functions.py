@@ -7,6 +7,7 @@ import pyff.imports as pi
 
 from helpers import parse_imports, extract_names_from_function
 
+
 class TestFunctionImplementationChange:
     def test_sanity(self):
         fic = pf.FunctionImplementationChange()
@@ -22,7 +23,9 @@ class TestFunctionImplementationChange:
         a_set.add(pf.FunctionImplementationChange())
         assert len(a_set) == 1
 
+
 # == ExternalUsageChange
+
 
 class TestExternalUsageChange:
     def test_sanity(self):
@@ -32,8 +35,10 @@ class TestExternalUsageChange:
 
     def test_make_message(self):
         euc = pf.ExternalUsageChange(gone={"name", "another_name"}, appeared={"new_name"})
-        assert (euc.make_message() == "No longer uses imported ``another_name'', ``name''\n"
-                                      "Newly uses imported ``new_name''")
+        assert (
+            euc.make_message() == "No longer uses imported ``another_name'', ``name''\n"
+            "Newly uses imported ``new_name''"
+        )
 
     def test_equality(self):
         euc = pf.ExternalUsageChange(gone={"name", "another_name"}, appeared={"new_name"})
@@ -43,7 +48,9 @@ class TestExternalUsageChange:
         assert euc == euc_same
         assert euc != euc_diff
 
+
 # == FunctionPyfferenceRecorder
+
 
 class TestFunctionPyfferenceRecorder:
     def test_nochange(self):
@@ -65,9 +72,9 @@ class TestFunctionPyfferenceRecorder:
         assert pyfference.old_name is None
         assert len(pyfference.implementation) == 1
 
-class TestFunctionPyfference:
 
-    def test_sanity(self): # pylint: disable=invalid-name
+class TestFunctionPyfference:
+    def test_sanity(self):  # pylint: disable=invalid-name
         fic = pf.FunctionImplementationChange()
         fp1 = pf.FunctionPyfference(name="function", implementation={fic}, old_name="old_function")
         assert fp1.name == "function"
@@ -86,8 +93,10 @@ class TestFunctionPyfference:
     def test_implementation_change(self):
         fic = pf.FunctionImplementationChange()
         change = pf.FunctionPyfference(name="function", implementation={fic})
-        assert (str(change) == "Function ``function'' changed implementation:\n"
-                               "  - Code semantics changed")
+        assert (
+            str(change) == "Function ``function'' changed implementation:\n"
+            "  - Code semantics changed"
+        )
 
     def test_simplify(self):
         fic = pf.FunctionImplementationChange()
@@ -97,44 +106,53 @@ class TestFunctionPyfference:
         empty_change = pf.FunctionPyfference(name="function", implementation=set())
         assert empty_change.simplify() is None
 
-        name_change = pf.FunctionPyfference(name="function", implementation=set(),
-                                            old_name="funktion")
+        name_change = pf.FunctionPyfference(
+            name="function", implementation=set(), old_name="funktion"
+        )
         assert name_change.simplify() is name_change
+
 
 # == ExternalNameExtractor
 
-class TestExternalNamesExtractor:
 
+class TestExternalNamesExtractor:
     def test_import(self):
         imported_names = parse_imports("import package, pkg.module, something as alias")
-        package_names = extract_names_from_function("def function(): a = package.function()",
-                                                    imported_names)
+        package_names = extract_names_from_function(
+            "def function(): a = package.function()", imported_names
+        )
         assert package_names == {"package"}
 
-        module_names = extract_names_from_function("def function(): a = pkg.module.attribute + 3",
-                                                   imported_names)
+        module_names = extract_names_from_function(
+            "def function(): a = pkg.module.attribute + 3", imported_names
+        )
         assert module_names == {"pkg.module"}
 
-        alias_names = extract_names_from_function("def f(): a = alias.C().package + pkg.module.p",
-                                                  imported_names)
+        alias_names = extract_names_from_function(
+            "def f(): a = alias.C().package + pkg.module.p", imported_names
+        )
         assert alias_names == {"alias", "pkg.module"}
 
     def test_importfrom(self):
-        imported_names = parse_imports("from pk import name, other as alias; "
-                                       "from pk.mod import other")
+        imported_names = parse_imports(
+            "from pk import name, other as alias; " "from pk.mod import other"
+        )
         package_names = extract_names_from_function("def function(): a = name()", imported_names)
         assert package_names == {"name"}
 
         alias_names = extract_names_from_function("def function(): a = alias + 3", imported_names)
         assert alias_names == {"alias"}
 
-        module_names = extract_names_from_function("def function(): a = other(3) + pkg + mod",
-                                                   imported_names)
+        module_names = extract_names_from_function(
+            "def function(): a = other(3) + pkg + mod", imported_names
+        )
         assert module_names == {"other"}
+
 
 # == compare_import_usage
 
-def test_compare_import_usage_no_external(): # pylint: disable=invalid-name
+
+def test_compare_import_usage_no_external():  # pylint: disable=invalid-name
     old_imports = parse_imports("import os; from ast import Name; import sys as system")
     new_imports = parse_imports("from os import path; import unittest")
 
@@ -143,7 +161,8 @@ def test_compare_import_usage_no_external(): # pylint: disable=invalid-name
 
     assert pf.compare_import_usage(old_function, new_function, old_imports, new_imports) is None
 
-def test_compare_import_usage_appeared(): # pylint: disable=invalid-name
+
+def test_compare_import_usage_appeared():  # pylint: disable=invalid-name
     old_imports = parse_imports("import os; from ast import Name; import sys as system")
     new_imports = parse_imports("import os; import unit")
 
@@ -153,7 +172,8 @@ def test_compare_import_usage_appeared(): # pylint: disable=invalid-name
     change = pf.compare_import_usage(old_function, new_function, old_imports, new_imports)
     assert change.appeared == {"unit"}
 
-def test_compare_import_usage_gone(): # pylint: disable=invalid-name
+
+def test_compare_import_usage_gone():  # pylint: disable=invalid-name
     old_imports = parse_imports("import os; from ast import Name; import sys as system")
     new_imports = parse_imports("from os.path import join; import unittest")
 
@@ -164,28 +184,30 @@ def test_compare_import_usage_gone(): # pylint: disable=invalid-name
     assert change.appeared == {"join"}
     assert change.gone == {"os"}
 
+
 # == pyff_function
 
-class TestPyffFunction():
+
+class TestPyffFunction:
     def test_identical(self):
         # ast.parse gives us ast.Module
-        old = ast.parse('def function(): return os.path.join(lst)').body[0]
-        new = ast.parse('def function(): return os.path.join(lst)').body[0]
+        old = ast.parse("def function(): return os.path.join(lst)").body[0]
+        new = ast.parse("def function(): return os.path.join(lst)").body[0]
 
         assert pf.pyff_function(old, new, pi.ImportedNames(), pi.ImportedNames()) is None
 
     def test_namechange(self):
         # ast.parse gives us ast.Module
-        old = ast.parse('def function(): return os.path.join(lst)').body[0]
-        new = ast.parse('def funktion(): return os.path.join(lst)').body[0]
+        old = ast.parse("def function(): return os.path.join(lst)").body[0]
+        new = ast.parse("def funktion(): return os.path.join(lst)").body[0]
 
         pyfference = pf.pyff_function(old, new, pi.ImportedNames(), pi.ImportedNames())
-        assert pyfference.name == 'funktion'
-        assert pyfference.old_name == 'function'
+        assert pyfference.name == "funktion"
+        assert pyfference.old_name == "function"
 
     def test_imports_fixes(self):
-        old = ast.parse('def function(): return path.join(lst)').body[0]
-        new = ast.parse('def function(): return pathy.join(lst)').body[0]
+        old = ast.parse("def function(): return path.join(lst)").body[0]
+        new = ast.parse("def function(): return pathy.join(lst)").body[0]
         old_imports = parse_imports("from os import path")
         new_imports = parse_imports("from os import path as pathy")
 
@@ -193,8 +215,8 @@ class TestPyffFunction():
         assert len(pyfference.implementation) == 2
 
     def test_external_name_usage(self):
-        old = ast.parse('def function(): return some_path').body[0]
-        new = ast.parse('def function(): return pathy.join(lst)').body[0]
+        old = ast.parse("def function(): return some_path").body[0]
+        new = ast.parse("def function(): return pathy.join(lst)").body[0]
         old_imports = parse_imports("from os import path")
         new_imports = parse_imports("from os import path as pathy")
 
@@ -202,30 +224,37 @@ class TestPyffFunction():
         assert len(pyfference.implementation) == 2
 
     def test_different_statement_count(self):
-        old = ast.parse('def function(): do_some_useless_stuff();').body[0]
-        new = ast.parse('def function(): do_some_useless_stuff(); return None').body[0]
+        old = ast.parse("def function(): do_some_useless_stuff();").body[0]
+        new = ast.parse("def function(): do_some_useless_stuff(); return None").body[0]
         no_imports = parse_imports("")
 
         pyfference = pf.pyff_function(old, new, no_imports, no_imports)
         assert len(pyfference.implementation) == 1
 
+
 # == pyff_function_code
+
 
 class TestPyffFunctionCode:  # pylint: disable=invalid-name
 
-    FUNCTION = 'def function(): return os.path.join(lst)'
-    FUNKTION = 'def funktion(): return os.path.join(lst)'
-    KLASS = 'class Klass: pass'
+    FUNCTION = "def function(): return os.path.join(lst)"
+    FUNKTION = "def funktion(): return os.path.join(lst)"
+    KLASS = "class Klass: pass"
 
     def test_identical(self):
-        assert pf.pyff_function_code(self.FUNCTION, self.FUNCTION,
-                                     pi.ImportedNames(), pi.ImportedNames()) is None
+        assert (
+            pf.pyff_function_code(
+                self.FUNCTION, self.FUNCTION, pi.ImportedNames(), pi.ImportedNames()
+            )
+            is None
+        )
 
     def test_namechange(self):
-        pyfference = pf.pyff_function_code(self.FUNCTION, self.FUNKTION, pi.ImportedNames(),
-                                           pi.ImportedNames())
-        assert pyfference.name == 'funktion'
-        assert pyfference.old_name == 'function'
+        pyfference = pf.pyff_function_code(
+            self.FUNCTION, self.FUNKTION, pi.ImportedNames(), pi.ImportedNames()
+        )
+        assert pyfference.name == "funktion"
+        assert pyfference.old_name == "function"
 
     def test_invalid(self):
         with raises(ValueError):
@@ -233,6 +262,7 @@ class TestPyffFunctionCode:  # pylint: disable=invalid-name
 
         with raises(ValueError):
             pf.pyff_function_code(self.KLASS, self.FUNKTION, pi.ImportedNames(), pi.ImportedNames())
+
 
 class TestFunctionSummary:
     def test_sanity(self):
@@ -242,54 +272,66 @@ class TestFunctionSummary:
         assert summary != pf.FunctionSummary("function")
         assert str(summary) == "function ``funktion''"
 
+
 class TestFunctionsExtractor:
     @fixture
     def extractor(self):
         return pf.FunctionsExtractor()
 
     def test_functions(self, extractor):
-        extractor.visit(ast.parse("def funktion_one():\n"
-                                  "    pass\n"
-                                  "def funktion_two():\n"
-                                  "    pass\n"))
+        extractor.visit(
+            ast.parse("def funktion_one():\n" "    pass\n" "def funktion_two():\n" "    pass\n")
+        )
         assert extractor.names == {"funktion_one", "funktion_two"}
         assert "funktion_one" in extractor.functions
         assert "funktion_two" in extractor.functions
 
     def test_not_enter_classes(self, extractor):
-        extractor.visit(ast.parse("def funktion():\n"
-                                  "    pass\n"
-                                  "class Klass:\n"
-                                  "    def method(self):\n"
-                                  "        pass"))
+        extractor.visit(
+            ast.parse(
+                "def funktion():\n"
+                "    pass\n"
+                "class Klass:\n"
+                "    def method(self):\n"
+                "        pass"
+            )
+        )
         assert extractor.names == {"funktion"}
         assert "method" not in extractor.functions
+
 
 class TestFunctionsPyfference:
     def test_sanity(self):
         new = {pf.FunctionSummary("function"), pf.FunctionSummary("funktion")}
-        changed = {'another': pf.FunctionPyfference("another", old_name="old_another",
-                                                    implementation=set())}
+        changed = {
+            "another": pf.FunctionPyfference(
+                "another", old_name="old_another", implementation=set()
+            )
+        }
         change = pf.FunctionsPyfference(new=new, changed=changed)
         assert pf.FunctionSummary("function") in change.new
         assert pf.FunctionSummary("funktion") in change.new
         assert change.changed["another"].old_name == "old_another"
-        assert str(change) == ("New function ``function''\n"
-                               "New function ``funktion''\n"
-                               "Function ``old_another'' renamed to ``another''")
+        assert str(change) == (
+            "New function ``function''\n"
+            "New function ``funktion''\n"
+            "Function ``old_another'' renamed to ``another''"
+        )
+
 
 class TestPyffFunctions:
     def test_sanity(self):
-        old = ast.parse("def same_funktion():\n"
-                        "   pass\n"
-                        "def changed_funktion():\n"
-                        "   pass\n")
-        new = ast.parse("def same_funktion():\n"
-                        "   pass\n"
-                        "def changed_funktion():\n"
-                        "   return None\n"
-                        "def new_funktion():\n"
-                        "   pass")
+        old = ast.parse(
+            "def same_funktion():\n" "   pass\n" "def changed_funktion():\n" "   pass\n"
+        )
+        new = ast.parse(
+            "def same_funktion():\n"
+            "   pass\n"
+            "def changed_funktion():\n"
+            "   return None\n"
+            "def new_funktion():\n"
+            "   pass"
+        )
         change = pf.pyff_functions(old, new)
         assert change is not None
         assert len(change.new) == 1
@@ -300,8 +342,7 @@ class TestPyffFunctions:
         assert "changed_funktion" in change.changed
 
     def test_same(self):
-        module = ast.parse("def same_funktion():\n"
-                           "   pass\n"
-                           "def changed_funktion():\n"
-                           "   pass\n")
+        module = ast.parse(
+            "def same_funktion():\n" "   pass\n" "def changed_funktion():\n" "   pass\n"
+        )
         assert pf.pyff_functions(module, module) is None
