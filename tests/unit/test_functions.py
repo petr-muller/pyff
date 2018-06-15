@@ -14,7 +14,13 @@ class TestFunctionImplementationChange:
 
     def test_make_message(self):
         fic = pf.FunctionImplementationChange()
-        assert fic.make_message(name="funktion") == "Function ``funktion'' changed implementation"
+        assert fic.make_message() == "Code semantics changed"
+
+    def test_equality(self):
+        assert pf.FunctionImplementationChange() == pf.FunctionImplementationChange()
+        a_set = {pf.FunctionImplementationChange()}
+        a_set.add(pf.FunctionImplementationChange())
+        assert len(a_set) == 1
 
 # == ExternalUsageChange
 
@@ -23,6 +29,19 @@ class TestExternalUsageChange:
         euc = pf.ExternalUsageChange(gone={"name", "another_name"}, appeared={"new_name"})
         assert euc.gone == {"another_name", "name"}
         assert euc.appeared == {"new_name"}
+
+    def test_make_message(self):
+        euc = pf.ExternalUsageChange(gone={"name", "another_name"}, appeared={"new_name"})
+        assert (euc.make_message() == "No longer uses imported ``another_name'', ``name''\n"
+                                      "Newly uses imported ``new_name''")
+
+    def test_equality(self):
+        euc = pf.ExternalUsageChange(gone={"name", "another_name"}, appeared={"new_name"})
+        euc_same = pf.ExternalUsageChange(gone={"another_name", "name"}, appeared={"new_name"})
+        euc_diff = pf.ExternalUsageChange(gone={"name"}, appeared={"new_name"})
+
+        assert euc == euc_same
+        assert euc != euc_diff
 
 # == FunctionPyfferenceRecorder
 
@@ -42,10 +61,9 @@ class TestFunctionPyfferenceRecorder:
     def test_implementation(self):
         recorder = pf.FunctionPyfferenceRecorder("function_name")
         recorder.implementation_changed(pf.FunctionImplementationChange())
-        recorder.implementation_changed(pf.FunctionImplementationChange())
         pyfference = recorder.build()
         assert pyfference.old_name is None
-        assert len(pyfference.implementation) == 2
+        assert len(pyfference.implementation) == 1
 
 class TestFunctionPyfference:
 
@@ -68,7 +86,8 @@ class TestFunctionPyfference:
     def test_implementation_change(self):
         fic = pf.FunctionImplementationChange()
         change = pf.FunctionPyfference(name="function", implementation={fic})
-        assert str(change) == "Function ``function'' changed implementation"
+        assert (str(change) == "Function ``function'' changed implementation:\n"
+                               "  - Code semantics changed")
 
     def test_simplify(self):
         fic = pf.FunctionImplementationChange()

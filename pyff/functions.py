@@ -3,20 +3,25 @@
 import ast
 from itertools import zip_longest
 from typing import Optional, cast, Set, Dict, List
+from collections.abc import Hashable
 
 import pyff.imports as pi
 import pyff.statements as ps
-from pyff.kitchensink import hl
+from pyff.kitchensink import hl, hlistify
 
 
-class FunctionImplementationChange:  # pylint: disable=too-few-public-methods
+class FunctionImplementationChange(Hashable):  # pylint: disable=too-few-public-methods
     """Represents any single change in function implementation"""
 
-    @staticmethod
-    def make_message(name: str) -> str:
+    def make_message(self) -> str:  # pylint: disable=no-self-use
         """Returns a human-readable message explaining the change"""
-        return f"Function {hl(name)} changed implementation"
+        return f"Code semantics changed"
 
+    def __eq__(self, other):
+        return isinstance(other, FunctionImplementationChange)
+
+    def __hash__(self):
+        return hash("FunctionImplementationChange")
 
 class ExternalUsageChange(FunctionImplementationChange):  # pylint: disable=too-few-public-methods
     """Represents any change in how function uses external names"""
@@ -25,6 +30,22 @@ class ExternalUsageChange(FunctionImplementationChange):  # pylint: disable=too-
         self.gone: Set[str] = gone
         self.appeared: Set[str] = appeared
 
+    def make_message(self) -> str:
+        """Returns a human-readable message explaining the change"""
+        lines: List[str] = []
+        if self.gone:
+            lines.append(f"No longer uses imported {hlistify(sorted(self.gone))}")
+        if self.appeared:
+            lines.append(f"Newly uses imported {hlistify(sorted(self.appeared))}")
+
+        return "\n".join(lines)
+
+    def __eq__(self, other):
+        return (self.gone == other.gone and
+                self.appeared == other.appeared)
+
+    def __hash__(self):
+        return hash("ExternalUsageChange")
 
 class StatementChange(FunctionImplementationChange):  # pylint: disable=too-few-public-methods
     """Represents a change between two statements"""
@@ -51,8 +72,13 @@ class FunctionPyfference:  # pylint: disable=too-few-public-methods
         if self.old_name is not None:
             lines.append(f"Function {hl(self.old_name)} renamed to {hl(self.name)}")
 
+        if self.implementation:
+            lines.append(f"Function {hl(self.name)} changed implementation:")
+
+        implementation_changes = []
         for change in self.implementation:
-            lines.append(change.make_message(self.name))
+            implementation_changes.append("  - " + change.make_message().replace("\n", "\n  -"))
+        lines.extend(sorted(implementation_changes))
 
         return "\n".join(lines)
 
