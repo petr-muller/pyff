@@ -82,8 +82,8 @@ class TestImportedName:
         module_ast = ast.dump(module_name.canonical_ast)
         assert (
             module_ast
-            == "Attribute(value=Attribute(value=Attribute(value=Name(id='one', ctx=Load()), attr='two', ctx=Load()), attr='three', ctx=Load()), attr='four', ctx=Load())"
-        )  # pylint: disable=line-too-long
+            == "Attribute(value=Attribute(value=Attribute(value=Name(id='one', ctx=Load()), attr='two', ctx=Load()), attr='three', ctx=Load()), attr='four', ctx=Load())"  # pylint: disable=line-too-long
+        )
 
         alias = ast.alias(name="fourth_module", asname="four")
         alias_node = ast.ImportFrom(module="one.two.three", names=[alias])
@@ -91,8 +91,8 @@ class TestImportedName:
         alias_ast = ast.dump(alias_name.canonical_ast)
         assert (
             alias_ast
-            == "Attribute(value=Attribute(value=Attribute(value=Name(id='one', ctx=Load()), attr='two', ctx=Load()), attr='three', ctx=Load()), attr='fourth_module', ctx=Load())"
-        )  # pylint: disable=line-too-long
+            == "Attribute(value=Attribute(value=Attribute(value=Name(id='one', ctx=Load()), attr='two', ctx=Load()), attr='three', ctx=Load()), attr='fourth_module', ctx=Load())"  # pylint: disable=line-too-long
+        )
 
 
 # == ImportedNames
