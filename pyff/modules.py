@@ -1,11 +1,15 @@
 """This module contains code that handles comparing modules"""
 
 import ast
+import logging
 from typing import List, Optional
 
 import pyff.classes as pc
 import pyff.functions as pf
 import pyff.imports as pi
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 class ModulePyfference:  # pylint: disable=too-few-public-methods
@@ -48,9 +52,11 @@ def pyff_module(old: ast.Module, new: ast.Module) -> Optional[ModulePyfference]:
     functions = pf.pyff_functions(old, new)
 
     if imports or classes or functions:
+        LOGGER.debug("Modules differ")
         pyfference = ModulePyfference(imports, classes, functions)
         return pyfference
 
+    LOGGER.debug("Modules are identical")
     return None
 
 
