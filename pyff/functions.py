@@ -1,6 +1,7 @@
 """This module contains code that handles comparing function implementations"""
 
 import ast
+import logging
 from itertools import zip_longest
 from typing import Optional, cast, Set, Dict, List
 from collections.abc import Hashable
@@ -8,6 +9,9 @@ from collections.abc import Hashable
 import pyff.imports as pi
 import pyff.statements as ps
 from pyff.kitchensink import hl, hlistify
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 class FunctionImplementationChange(Hashable):  # pylint: disable=too-few-public-methods
@@ -320,6 +324,7 @@ def pyff_functions(old: ast.Module, new: ast.Module) -> Optional[FunctionsPyffer
     new_import_walker.visit(new)
 
     both = old_walker.names.intersection(new_walker.names)
+    LOGGER.debug(f"Functions present in both modules: {both}")
     differences = {}
     for function in both:
         difference = pyff_function(
@@ -329,12 +334,18 @@ def pyff_functions(old: ast.Module, new: ast.Module) -> Optional[FunctionsPyffer
             new_import_walker.names,
         )
         if difference:
+            LOGGER.debug(f"Function {function} differs")
             differences[function] = difference
+        else:
+            LOGGER.debug(f"Function {function} is identical")
 
     new_names = new_walker.names - old_walker.names
     new_functions = {FunctionSummary(name) for name in new_names}
+    LOGGER.debug(f"New functions: {new_names}")
 
     if differences or new_functions:
+        LOGGER.debug("Functions differ")
         return FunctionsPyfference(changed=differences, new=new_functions)
 
+    LOGGER.debug("Functions are identical")
     return None
