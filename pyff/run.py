@@ -1,16 +1,16 @@
 """Entry point for the `pyff` command"""
 
-import sys  # pragma: no cover
-import logging  # pragma: no cover
-from argparse import ArgumentParser  # pragma: no cover
+import sys
+import logging
+from argparse import ArgumentParser
 
-from pyff.modules import pyff_module_code  # pragma: no cover
-from pyff.kitchensink import highlight, HIGHLIGHTS  # pragma: no cover
+from pyff.modules import pyff_module_code
+from pyff.kitchensink import highlight, HIGHLIGHTS
 
 LOGGER = logging.getLogger(__name__)
 
 
-def main() -> None:  # pragma: no cover
+def main() -> None:
     """Entry point for the `pyff` command"""
     parser = ArgumentParser()
     parser.add_argument("old")
@@ -40,5 +40,5 @@ def main() -> None:  # pragma: no cover
     print(highlight(str(changes), args.highlight))
 
 
-if __name__ == "__main__":  # pragma: no cover
+if __name__ == "__main__":
     main()

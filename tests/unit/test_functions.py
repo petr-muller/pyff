@@ -24,9 +24,6 @@ class TestFunctionImplementationChange:
         assert len(a_set) == 1
 
 
-# == ExternalUsageChange
-
-
 class TestExternalUsageChange:
     def test_sanity(self):
         euc = pf.ExternalUsageChange(gone={"name", "another_name"}, appeared={"new_name"})
@@ -47,9 +44,6 @@ class TestExternalUsageChange:
 
         assert euc == euc_same
         assert euc != euc_diff
-
-
-# == FunctionPyfferenceRecorder
 
 
 class TestFunctionPyfferenceRecorder:
@@ -112,9 +106,6 @@ class TestFunctionPyfference:
         assert name_change.simplify() is name_change
 
 
-# == ExternalNameExtractor
-
-
 class TestExternalNamesExtractor:
     def test_import(self):
         imported_names = parse_imports("import package, pkg.module, something as alias")
@@ -149,43 +140,38 @@ class TestExternalNamesExtractor:
         assert module_names == {"other"}
 
 
-# == compare_import_usage
+class TestCompareImportUsage:
+    def test_no_external(self):
+        old_imports = parse_imports("import os; from ast import Name; import sys as system")
+        new_imports = parse_imports("from os import path; import unittest")
 
+        old_function = ast.parse("def function(a, b, c): return a if b else c")
+        new_function = ast.parse("def function(a, b, c): temp = a / c; return temp if b else None")
 
-def test_compare_import_usage_no_external():  # pylint: disable=invalid-name
-    old_imports = parse_imports("import os; from ast import Name; import sys as system")
-    new_imports = parse_imports("from os import path; import unittest")
+        assert pf.compare_import_usage(old_function, new_function, old_imports, new_imports) is None
 
-    old_function = ast.parse("def function(a, b, c): return a if b else c")
-    new_function = ast.parse("def function(a, b, c): temp = a / c; return temp if b else None")
+    def test_appeared(self):
+        old_imports = parse_imports("import os; from ast import Name; import sys as system")
+        new_imports = parse_imports("import os; import unit")
 
-    assert pf.compare_import_usage(old_function, new_function, old_imports, new_imports) is None
+        old_function = ast.parse("def function(a, b, c): return os.path.join([a, b, c])")
+        new_function = ast.parse(
+            "def function(a, b, c): unit.method(); return os.path.join([a,b,c])"
+        )
 
+        change = pf.compare_import_usage(old_function, new_function, old_imports, new_imports)
+        assert change.appeared == {"unit"}
 
-def test_compare_import_usage_appeared():  # pylint: disable=invalid-name
-    old_imports = parse_imports("import os; from ast import Name; import sys as system")
-    new_imports = parse_imports("import os; import unit")
+    def test_gone(self):
+        old_imports = parse_imports("import os; from ast import Name; import sys as system")
+        new_imports = parse_imports("from os.path import join; import unittest")
 
-    old_function = ast.parse("def function(a, b, c): return os.path.join([a, b, c])")
-    new_function = ast.parse("def function(a, b, c): unit.method(); return os.path.join([a,b,c])")
+        old_function = ast.parse("def function(a, b, c): return os.path.join([a, b, c])")
+        new_function = ast.parse("def function(a, b, c): return join([a, b, c])")
 
-    change = pf.compare_import_usage(old_function, new_function, old_imports, new_imports)
-    assert change.appeared == {"unit"}
-
-
-def test_compare_import_usage_gone():  # pylint: disable=invalid-name
-    old_imports = parse_imports("import os; from ast import Name; import sys as system")
-    new_imports = parse_imports("from os.path import join; import unittest")
-
-    old_function = ast.parse("def function(a, b, c): return os.path.join([a, b, c])")
-    new_function = ast.parse("def function(a, b, c): return join([a, b, c])")
-
-    change = pf.compare_import_usage(old_function, new_function, old_imports, new_imports)
-    assert change.appeared == {"join"}
-    assert change.gone == {"os"}
-
-
-# == pyff_function
+        change = pf.compare_import_usage(old_function, new_function, old_imports, new_imports)
+        assert change.appeared == {"join"}
+        assert change.gone == {"os"}
 
 
 class TestPyffFunction:
@@ -232,10 +218,7 @@ class TestPyffFunction:
         assert len(pyfference.implementation) == 1
 
 
-# == pyff_function_code
-
-
-class TestPyffFunctionCode:  # pylint: disable=invalid-name
+class TestPyffFunctionCode:
 
     FUNCTION = "def function(): return os.path.join(lst)"
     FUNKTION = "def funktion(): return os.path.join(lst)"
@@ -340,6 +323,21 @@ class TestPyffFunctions:
 
         assert len(change.changed) == 1
         assert "changed_funktion" in change.changed
+
+    def test_changed_arguments(self):
+        old = ast.parse(
+            "import pathlib\n"
+            "def funktion(arg: pathlib.Path) -> pathlib.Path:\n"
+            "   return GLOBAL / arg"
+        )
+        new = ast.parse(
+            "from pathlib import Path\n"
+            "def funktion(arg: Path) -> Path:\n"
+            "   return GLOBAL / arg"
+        )
+        change = pf.pyff_functions(old, new)
+        # right now, we do not detect different type hints
+        assert change is None
 
     def test_same(self):
         module = ast.parse(

@@ -1,14 +1,18 @@
 """This module contains code that handles comparing imports"""
 
-from collections.abc import Mapping
-from typing import Set, Dict, Union, Optional
+import collections.abc
+import types
+from typing import Set, Dict, Union, Optional, FrozenSet, Mapping, cast
 import ast
+import logging
 from pyff.kitchensink import hl, hlistify, pluralize
 
 ImportNode = Union[ast.Import, ast.ImportFrom]  # pylint: disable=invalid-name
 
+LOGGER = logging.getLogger(__name__)
 
-class ImportedName:  # pylint: disable=too-few-public-methods
+
+class ImportedName:
     """Represents a single imported name"""
 
     def __init__(self, name: str, node: ImportNode, alias: ast.alias) -> None:
@@ -19,8 +23,16 @@ class ImportedName:  # pylint: disable=too-few-public-methods
     def __repr__(self):  # pragma: no cover
         return f"ImportedName(name={self.name} node={self.node} alias={self.alias}"
 
+    def is_import(self) -> bool:
+        """Returns True if name was imported with `import X` statement"""
+        return isinstance(self.node, ast.Import)
+
+    def is_import_from(self) -> bool:
+        """Returns True if name was imported with `from Y import X` statement"""
+        return isinstance(self.node, ast.ImportFrom)
+
     @property
-    def canonical_name(self):
+    def canonical_name(self) -> str:
         """Returns whole name.
 
         Example: For 'join' imported by 'from os.path import join', returns 'os.path.join'"""
@@ -32,10 +44,12 @@ class ImportedName:  # pylint: disable=too-few-public-methods
         raise Exception("Node should always be one of {Import, ImportFrom}")  # pragma: no cover
 
     @property
-    def canonical_ast(self):
+    def canonical_ast(self) -> Union[ast.Name, ast.Attribute]:
         """Returns AST node for the full name
 
         Example: For 'join' imported by 'from os.path import join', returns AST of 'os.path.join'"""
+        node: Union[ast.Name, ast.Attribute]
+
         if isinstance(self.node, ast.Import):
             items = self.alias.name.split(".")
             node = ast.Name(id=items.pop(0), ctx=ast.Load())
@@ -43,6 +57,10 @@ class ImportedName:  # pylint: disable=too-few-public-methods
                 node = ast.Attribute(value=node, attr=items.pop(0), ctx=ast.Load())
             return node
         elif isinstance(self.node, ast.ImportFrom):
+            if self.node.module is None:
+                raise Exception(
+                    "ast.ImportFrom has module attribute set to None"
+                )  # pragma: no cover
             items = self.node.module.split(".") + [self.alias.name]
             node = ast.Name(id=items.pop(0), ctx=ast.Load())
             while items:
@@ -55,32 +73,188 @@ class ImportedName:  # pylint: disable=too-few-public-methods
         return self.name
 
 
+class FromImportPyfference:
+    """Represents difference in `from X import Y` between two ImportedNames"""
+
+    def __init__(self):
+        self._new: Dict[str, Set[ImportedName]] = {}
+        self._removed: Dict[str, Set[ImportedName]] = {}
+        self._new_modules: Set[str] = set()
+        self._removed_modules: Set[str] = set()
+
+    @property
+    def new(self) -> Mapping[str, Set[ImportedName]]:
+        """Returns a read-only mapping of new imported-from names"""
+        return types.MappingProxyType(self._new)
+
+    @property
+    def removed(self) -> Mapping[str, Set[ImportedName]]:
+        """Returns a read-only mapping of removed imported-from names"""
+        return types.MappingProxyType(self._removed)
+
+    @property
+    def new_modules(self) -> FrozenSet[str]:
+        """Returns a read-only set of new modules imported via `from X import Y` statements"""
+        return frozenset(self._new_modules)
+
+    @property
+    def removed_modules(self) -> FrozenSet[str]:
+        """Returns a read-only set of removed modules imported via `from X import Y` statements"""
+        return frozenset(self._removed_modules)
+
+    def add_new(self, node: ImportedName) -> None:
+        """Add new name imported by `from X import y` statement"""
+        if not node.is_import_from():
+            raise ValueError(
+                "FromImportPyfference can only handle ImportFrom nodes"
+            )  # pragma: no cover
+
+        module = cast(ast.ImportFrom, node.node).module
+
+        if module is None:
+            raise Exception("ast.ImportFrom has `module` attribute set to None")  # pragma: no cover
+
+        if module not in self._new:
+            self._new[module] = set()
+        self._new[module].add(node)
+
+    def add_removed(self, node: ImportedName) -> None:
+        """Add removed name imported by `from X import y` statement"""
+        if not node.is_import_from():
+            raise ValueError(
+                "FromImportPyfference can only handle ImportFrom nodes"
+            )  # pragma: no cover
+
+        module = cast(ast.ImportFrom, node.node).module
+        if module is None:
+            raise Exception("ast.ImportFrom has `module` attribute set to None")  # pragma: no cover
+
+        if module not in self._removed:
+            self._removed[module] = set()
+        self._removed[module].add(node)
+
+    def add_new_modules(self, modules: Set[str]) -> None:
+        """Add new modules imported via `from X import Y` statements"""
+        self._new_modules.update(modules)
+
+    def add_removed_modules(self, modules: Set[str]) -> None:
+        """Add removed modules imported via `from X import Y` statements"""
+        self._removed_modules.update(modules)
+
+    def delete_new_module(self, module: str) -> None:
+        """Delete new module imported via `from X import Y` statements"""
+        self._new_modules.discard(module)
+        if module in self._new:
+            del self._new[module]
+
+    def delete_removed_module(self, module: str) -> None:
+        """Delete removed module imported via `from X import Y` statements"""
+        self._removed_modules.discard(module)
+        if module in self._removed:
+            del self._removed[module]
+
+    def __bool__(self):
+        return bool(self._new or self.removed or self.new_modules or self.removed_modules)
+
+
 class ImportsPyfference:
     """Represent difference between two ImportedNames."""
 
     def __init__(self):
-        self.new_imports: Set[ImportedName] = set()
-        self.removed_imports: Set[ImportedName] = set()
-        self.new_fromimports: Dict[str, Set[ImportedName]] = {}
-        self.removed_fromimports: Dict[str, Set[ImportedName]] = {}
-        self.new_fromimport_modules: Set[str] = set()
-        self.removed_fromimport_modules: Set[str] = set()
+        self._new_imports: Set[ImportedName] = set()
+        self._removed_imports: Set[ImportedName] = set()
+        self.fromimports: FromImportPyfference = FromImportPyfference()
+        self._changed_to_fromimport: Dict[str, Set[ImportedName]] = {}
+        self._changed_to_import: Dict[str, Set[ImportedName]] = {}
 
     def __bool__(self):
         return bool(
             (
-                self.new_imports
-                or self.removed_imports
-                or self.new_fromimports
-                or self.removed_fromimports
-                or self.new_fromimport_modules
-                or self.removed_fromimport_modules
+                self._new_imports
+                or self._removed_imports
+                or self.fromimports
+                or self._changed_to_fromimport
+                or self._changed_to_import
             )
         )
 
-    def simplify(self):
+    @property
+    def new_imports(self) -> FrozenSet[ImportedName]:
+        """Returns a read-only set of new imported names"""
+        return frozenset(self._new_imports)
+
+    @property
+    def removed_imports(self) -> FrozenSet[ImportedName]:
+        """Returns a read-only set of removed imported names"""
+        return frozenset(self._removed_imports)
+
+    def simplify(self) -> Optional["ImportsPyfference"]:
         """Cleans empty differences, empty sets etc. after manipulation"""
         return self if self else None
+
+    def new_import(self, node: ImportedName) -> None:
+        """Add a new imported name"""
+        self._new_imports.add(node)
+
+    def removed_import(self, node: ImportedName) -> None:
+        """Add a removed imported name"""
+        self._removed_imports.add(node)
+
+    def new_from_import(self, node: ImportedName) -> None:
+        """Add a new name imported via `from X import Y` statement"""
+        if not node.is_import_from():
+            raise ValueError(
+                "ImportsPyfference.new_from_import can only handle ImportFrom nodes"
+            )  # pragma: no cover
+
+        if cast(ast.ImportFrom, node.node).module:
+            self.fromimports.add_new(node)
+
+    def removed_from_import(self, node: ImportedName) -> None:
+        """Add a removed name imported via `from X import Y` statement"""
+        if not node.is_import_from():
+            raise ValueError(
+                "ImportsPyfference.new_from_import can only handle ImportFrom nodes"
+            )  # pragma: no cover
+
+        if cast(ast.ImportFrom, node.node).module:
+            self.fromimports.add_removed(node)
+
+    def new_fromimport_modules(self, modules: Set[str]) -> None:
+        """Add new modules imported via `from X import Y` statement"""
+        self.fromimports.add_new_modules(modules)
+
+    def removed_fromimport_modules(self, modules: Set[str]) -> None:
+        """Add removed modules imported via `from X import Y` statement"""
+        self.fromimports.add_removed_modules(modules)
+
+    def reduce(self) -> None:
+        """Find special cases and other reductions in the differences
+
+        (1) Find matching names imported by different import statements and
+            create special records for these changes.
+            Example: `from os import path` in one version and `import os` in another"""
+        for name in set(self._new_imports):
+            if name.name in self.fromimports.removed_modules:
+                LOGGER.debug(
+                    f"New module has 'import {name}' "
+                    f"and old module had 'from {name} import ...': "
+                    f"Adding a change record"
+                )
+                self._new_imports.discard(name)
+                self._changed_to_import[name.name] = self.fromimports.removed[name.name]
+                self.fromimports.delete_removed_module(name.name)
+
+        for name in set(self._removed_imports):
+            if name.name in self.fromimports.new_modules:
+                self._removed_imports.discard(name)
+                self._changed_to_fromimport[name.name] = self.fromimports.new[name.name]
+                self.fromimports.delete_new_module(name.name)
+                LOGGER.debug(
+                    f"Old module had 'import {name}' and "
+                    f"new module has 'from {name} import ...': "
+                    f"Adding a change record"
+                )
 
     def __str__(self):
         lines = []
@@ -96,51 +270,72 @@ class ImportsPyfference:
             names = hlistify(new_imports)
             lines.append(f"New imported {packages} {names}")
 
-        for module, names in self.removed_fromimports.items():
+        for module, names in self.fromimports.removed.items():
             removed_names = sorted([str(name) for name in names])
             hl_removed_names = hlistify(removed_names)
-            if module in self.removed_fromimport_modules:
+            if module in self.fromimports.removed_modules:
                 lines.append(f"Removed import of {hl_removed_names} from removed {hl(module)}")
             else:
                 lines.append(f"Removed import of {hl_removed_names} from {hl(module)}")
 
-        for module, names in self.new_fromimports.items():
+        for module, names in self.fromimports.new.items():
             new_names = sorted([str(name) for name in names])
-            if module in self.new_fromimport_modules:
+            if module in self.fromimports.new_modules:
                 lines.append(f"New imported {hlistify(new_names)} from new {hl(module)}")
             else:
                 lines.append(f"New imported {hlistify(new_names)} from {hl(module)}")
 
+        for module, names in self._changed_to_fromimport.items():
+            new_names = sorted([str(name) for name in names])
+            lines.append(
+                f"New imported {hlistify(new_names)} from {hl(module)} "
+                f"(previously, full {hl(module)} was imported)"
+            )
+
+        for module, names in self._changed_to_import.items():
+            new_names = sorted([str(name) for name in names])
+            was = "was" if len(new_names) == 1 else "were"
+            lines.append(
+                f"New imported package {hl(module)} "
+                f"(previously, only {hlistify(new_names)} "
+                f"{was} imported from {hl(module)})"
+            )
+
         return "\n".join(lines)
 
 
-class ImportedNames(Mapping):  # pylint: disable=too-few-public-methods
+class ImportedNames(collections.abc.Mapping):  # pylint: disable=too-few-public-methods
     """Dictionary mapping external names to appropriate ImportedName"""
 
     @staticmethod
     def compare(old: "ImportedNames", new: "ImportedNames") -> Optional[ImportsPyfference]:
         """Compare two sets of imported names."""
+        LOGGER.debug("Comparing ImportedNames")
         change = ImportsPyfference()
         for name, node in new.names.items():
             if name not in old.names:
-                if isinstance(node.node, ast.Import):
-                    change.new_imports.add(node)
-                elif isinstance(node.node, ast.ImportFrom) and node.node.module:
-                    if node.node.module not in change.new_fromimports:
-                        change.new_fromimports[node.node.module] = set()
-                    change.new_fromimports[node.node.module].add(node)
+                LOGGER.debug(f"New name '{name}' not present in old names")
+                if node.is_import():
+                    change.new_import(node)
+                elif node.is_import_from():
+                    change.new_from_import(node)
 
         for name, node in old.names.items():
             if name not in new.names:
-                if isinstance(node.node, ast.Import):
-                    change.removed_imports.add(node)
-                elif isinstance(node.node, ast.ImportFrom) and node.node.module:
-                    if node.node.module not in change.removed_fromimports:
-                        change.removed_fromimports[node.node.module] = set()
-                    change.removed_fromimports[node.node.module].add(node)
+                LOGGER.debug(f"Old name '{name}' not present in new names")
+                if node.is_import():
+                    change.removed_import(node)
+                elif node.is_import_from():
+                    change.removed_from_import(node)
 
-        change.new_fromimport_modules = new.from_modules - old.from_modules
-        change.removed_fromimport_modules = old.from_modules - new.from_modules
+        change.new_fromimport_modules(new.from_modules - old.from_modules)
+        LOGGER.debug(f"New modules from which names were imported: " f"{change.fromimports.new}")
+        change.removed_fromimport_modules(old.from_modules - new.from_modules)
+        LOGGER.debug(
+            f"Removed modules from which names were imported: " f"{change.fromimports.removed}"
+        )
+
+        change.reduce()
 
         return change if change else None
 

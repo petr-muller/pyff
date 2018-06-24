@@ -1,10 +1,9 @@
 # pylint: disable=missing-docstring, no-self-use, too-few-public-methods
 
 import ast
+import pytest
 import pyff.imports as pi
 from helpers import parse_imports
-
-# == ImportedName
 
 
 class TestImportedName:
@@ -15,6 +14,8 @@ class TestImportedName:
         assert name.node.names[0].name == "os.path"
         assert name.node.names[0].asname is None
         assert name.alias is alias
+        assert name.is_import()
+        assert not name.is_import_from()
 
     def test_importfrom(self):
         alias = ast.alias(name="path", asname=None)
@@ -25,6 +26,8 @@ class TestImportedName:
         assert name.node.names[0].asname is None
         assert name.node.level == 0
         assert name.alias is alias
+        assert not name.is_import()
+        assert name.is_import_from()
 
     def test_fqdn_imports(self):
         simple = ast.alias(name="os", asname=None)
@@ -93,9 +96,6 @@ class TestImportedName:
             alias_ast
             == "Attribute(value=Attribute(value=Attribute(value=Name(id='one', ctx=Load()), attr='two', ctx=Load()), attr='three', ctx=Load()), attr='fourth_module', ctx=Load())"  # pylint: disable=line-too-long
         )
-
-
-# == ImportedNames
 
 
 class TestImportedNames:
@@ -173,11 +173,11 @@ class TestImportedNamesCompare:
 
         change = pi.ImportedNames.compare(old, new)
         assert len(change.new_imports) == 1
-        assert change.new_imports.pop().canonical_name == "sys"
+        assert max(change.new_imports).canonical_name == "sys"
 
         change_with_comma = pi.ImportedNames.compare(old, new_with_comma)
         assert len(change_with_comma.new_imports) == 1
-        assert change_with_comma.new_imports.pop().canonical_name == "sys"
+        assert max(change_with_comma.new_imports).canonical_name == "sys"
 
     def test_removed_import(self):
         old = parse_imports("import os; import sys")
@@ -186,11 +186,11 @@ class TestImportedNamesCompare:
 
         change = pi.ImportedNames.compare(old, new)
         assert len(change.removed_imports) == 1
-        assert change.removed_imports.pop().canonical_name == "sys"
+        assert max(change.removed_imports).canonical_name == "sys"
 
         change = pi.ImportedNames.compare(old_with_comma, new)
         assert len(change.removed_imports) == 1
-        assert change.removed_imports.pop().canonical_name == "sys"
+        assert max(change.removed_imports).canonical_name == "sys"
 
     def test_new_importfrom(self):
         old = parse_imports("from os import path")
@@ -198,14 +198,14 @@ class TestImportedNamesCompare:
         new_with_comma = parse_imports("from os import path, environ")
 
         change = pi.ImportedNames.compare(old, new)
-        assert len(change.new_fromimports) == 1
-        assert not change.new_fromimport_modules
-        assert change.new_fromimports["os"].pop().canonical_name == "os.environ"
+        assert len(change.fromimports.new) == 1
+        assert not change.fromimports.new_modules
+        assert change.fromimports.new["os"].pop().canonical_name == "os.environ"
 
         change_with_comma = pi.ImportedNames.compare(old, new_with_comma)
-        assert len(change_with_comma.new_fromimports) == 1
-        assert not change.new_fromimport_modules
-        assert change_with_comma.new_fromimports["os"].pop().canonical_name == "os.environ"
+        assert len(change_with_comma.fromimports.new) == 1
+        assert not change.fromimports.new_modules
+        assert change_with_comma.fromimports.new["os"].pop().canonical_name == "os.environ"
 
     def test_removed_importfrom(self):
         old = parse_imports("from os import path; from os import environ")
@@ -213,23 +213,23 @@ class TestImportedNamesCompare:
         new = parse_imports("from os import path")
 
         change = pi.ImportedNames.compare(old, new)
-        assert len(change.removed_fromimports) == 1
-        assert not change.removed_fromimport_modules
-        assert change.removed_fromimports["os"].pop().canonical_name == "os.environ"
+        assert len(change.fromimports.removed) == 1
+        assert not change.fromimports.removed_modules
+        assert change.fromimports.removed["os"].pop().canonical_name == "os.environ"
 
         change_with_comma = pi.ImportedNames.compare(old_with_comma, new)
-        assert len(change_with_comma.removed_fromimports) == 1
-        assert not change.removed_fromimport_modules
-        assert change_with_comma.removed_fromimports["os"].pop().canonical_name == "os.environ"
+        assert len(change_with_comma.fromimports.removed) == 1
+        assert not change.fromimports.removed_modules
+        assert change_with_comma.fromimports.removed["os"].pop().canonical_name == "os.environ"
 
     def test_new_importfrom_module(self):
         old = parse_imports("from os import path")
         new = parse_imports("from module import name")
 
         change = pi.ImportedNames.compare(old, new)
-        assert len(change.new_fromimports) == 1
-        assert len(change.new_fromimport_modules) == 1
-        assert change.new_fromimport_modules == {"module"}
+        assert len(change.fromimports.new) == 1
+        assert len(change.fromimports.new_modules) == 1
+        assert change.fromimports.new_modules == {"module"}
 
     def test_identical(self):
         old = parse_imports("from os import path")
@@ -238,11 +238,55 @@ class TestImportedNamesCompare:
         assert pi.ImportedNames.compare(old, new) is None
 
 
+class TestFromImportPyfference:
+    @staticmethod
+    @pytest.fixture
+    def change():
+        return pi.FromImportPyfference()
+
+    def test_truthiness(self, change):
+        assert not change
+        change.add_new_modules({"w00t"})
+        assert change
+
+    def test_new(self, change):
+        alias = ast.alias(name="path", asname=None)
+        change.add_new(
+            pi.ImportedName("path", ast.ImportFrom(module="os", level=0, names=[alias]), alias)
+        )
+        assert change.new["os"] is not None
+
+    def test_removed(self, change):
+        alias = ast.alias(name="path", asname=None)
+        change.add_removed(
+            pi.ImportedName("path", ast.ImportFrom(module="os", level=0, names=[alias]), alias)
+        )
+        assert change.removed["os"] is not None
+
+    def test_new_modules(self, change):
+        change.add_new_modules({"os", "awsum"})
+        alias = ast.alias(name="path", asname=None)
+        change.add_new(
+            pi.ImportedName("path", ast.ImportFrom(module="os", level=0, names=[alias]), alias)
+        )
+        assert change.new_modules == {"awsum", "os"}
+        assert change.new
+        change.delete_new_module("os")
+        assert change.new_modules == {"awsum"}
+        assert not change.new
+
+    def test_removed_modules(self, change):
+        change.add_removed_modules({"w00t", "awsum"})
+        assert change.removed_modules == {"awsum", "w00t"}
+        change.delete_removed_module("w00t")
+        assert change.removed_modules == {"awsum"}
+
+
 class TestImportsPyfference:
     def test_truthiness(self):
         change = pi.ImportsPyfference()
         assert not change
-        change.new_fromimport_modules.add("w00t")
+        change.new_fromimport_modules({"w00t"})
         assert change
 
     def test_message_new_import(self):
@@ -309,8 +353,21 @@ class TestImportsPyfference:
             == "Removed import of ``one'' from removed ``module''"
         )
 
+    def test_from_to_general(self):
+        old = parse_imports("from pathlib import Path")
+        new = parse_imports("import pathlib")
+        assert (
+            str(pi.ImportedNames.compare(old, new))
+            == "New imported package ``pathlib'' (previously, only ``Path'' was imported from ``pathlib'')"
+        )
 
-# == ImportExtractor
+    def test_general_to_from(self):
+        old = parse_imports("import pathlib")
+        new = parse_imports("from pathlib import Path")
+        assert (
+            str(pi.ImportedNames.compare(old, new))
+            == "New imported ``Path'' from ``pathlib'' (previously, full ``pathlib'' was imported)"
+        )
 
 
 class TestImportExtractor:

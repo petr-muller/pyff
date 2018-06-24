@@ -82,7 +82,7 @@ class FunctionPyfference:  # pylint: disable=too-few-public-methods
 
         implementation_changes = []
         for change in self.implementation:
-            implementation_changes.append("  - " + change.make_message().replace("\n", "\n  -"))
+            implementation_changes.append("  - " + change.make_message().replace("\n", "\n  - "))
         lines.extend(sorted(implementation_changes))
 
         return "\n".join(lines)
@@ -146,6 +146,7 @@ class ExternalNamesExtractor(ast.NodeVisitor):
 
     def visit_Name(self, node):  # pylint: disable=invalid-name
         """Compare all names against a list of imported names"""
+        LOGGER.debug(f"Visiting Name node: {node.id}")
         self.in_progress = None
         self.generic_visit(node)
         if node.id in self.imported_names:
@@ -155,6 +156,7 @@ class ExternalNamesExtractor(ast.NodeVisitor):
 
     def visit_Attribute(self, node):  # pylint: disable=invalid-name
         """..."""
+        LOGGER.debug(f"Visiting Attribute node: {node.attr}")
         self.in_progress = None
         self.generic_visit(node)
         if self.in_progress is not None:
@@ -164,7 +166,7 @@ class ExternalNamesExtractor(ast.NodeVisitor):
                 self.in_progress = None
 
 
-def compare_import_usage(
+def compare_import_usage(  # pylint: disable=invalid-name
     old: ast.FunctionDef,
     new: ast.FunctionDef,
     old_imports: pi.ImportedNames,
@@ -186,11 +188,19 @@ def compare_import_usage(
     first_walker = ExternalNamesExtractor(old_imports)
     second_walker = ExternalNamesExtractor(new_imports)
 
-    first_walker.visit(old)
-    second_walker.visit(new)
+    for statement in old.body:
+        first_walker.visit(statement)
+
+    for statement in new.body:
+        second_walker.visit(statement)
 
     appeared = second_walker.names - first_walker.names
     gone = first_walker.names - second_walker.names
+
+    LOGGER.debug(f"Imported names used in old function: {first_walker.names}")
+    LOGGER.debug(f"Imported names used in new function: {second_walker.names}")
+    LOGGER.debug(f"Imported names not used anymore:     {gone}")
+    LOGGER.debug(f"Imported names newly used:           {appeared}")
 
     if appeared or gone:
         return ExternalUsageChange(gone=gone, appeared=appeared)
@@ -219,19 +229,31 @@ def pyff_function(
     difference_recorder = FunctionPyfferenceRecorder(new.name)
 
     if old.name != new.name:
+        LOGGER.debug(f"Name differs: old={old.name} new={new.name}")
         difference_recorder.name_changed(old.name)
 
     for old_statement, new_statement in zip_longest(old.body, new.body):
+        LOGGER.debug("Comparing statements:")
         if old_statement is None or new_statement is None:
+            LOGGER.debug(f"  old={repr(old_statement)}")
+            LOGGER.debug(f"  new={repr(new_statement)}")
+            LOGGER.debug(
+                "  One statement is None: one function is longer, so implementation changed"
+            )
             difference_recorder.implementation_changed(FunctionImplementationChange())
             break
 
+        LOGGER.debug(f"  old={ast.dump(old_statement)}")
+        LOGGER.debug(f"  new={ast.dump(new_statement)}")
         change = ps.pyff_statement(old_statement, new_statement, old_imports, new_imports)
         if change:
+            LOGGER.debug("  Statements are different")
             difference_recorder.implementation_changed(StatementChange(change))
 
+    LOGGER.debug("Comparing imported name usage")
     external_name_usage_difference = compare_import_usage(old, new, old_imports, new_imports)
     if external_name_usage_difference:
+        LOGGER.debug("Imported name usage differs")
         difference_recorder.implementation_changed(external_name_usage_difference)
 
     return difference_recorder.build()
@@ -327,6 +349,7 @@ def pyff_functions(old: ast.Module, new: ast.Module) -> Optional[FunctionsPyffer
     LOGGER.debug(f"Functions present in both modules: {both}")
     differences = {}
     for function in both:
+        LOGGER.debug(f"Comparing function '{function}'")
         difference = pyff_function(
             old_walker.functions[function],
             new_walker.functions[function],
