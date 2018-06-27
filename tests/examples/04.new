@@ -4,10 +4,11 @@
 #
 # $ example_quotes 04
 # New imported package 'pathlib' (previously, only 'Path' was imported from 'pathlib')
-# References of 'Path' were changed to 'pathlib.Path'
+# Function 'main' changed implementation:
+#   - No longer uses imported 'Path'
+#   - Newly uses imported 'pathlib'
+#   - References of 'Path' were changed to 'pathlib.Path'
 # $
-# TODO:
-# - Remove: `Function 'main' changed implementation
 
 """Entry point for the `vtes` command"""
 

@@ -4,6 +4,7 @@ import ast
 from pytest import raises, fixture
 import pyff.functions as pf
 import pyff.imports as pi
+import pyff.statements as ps
 
 from helpers import parse_imports, extract_names_from_function
 
@@ -44,6 +45,14 @@ class TestExternalUsageChange:
 
         assert euc == euc_same
         assert euc != euc_diff
+
+
+class TestStatementChange:
+    def test_sanity(self):
+        spyff = ps.StatementPyfference()
+        change = pf.StatementChange(spyff)
+
+        assert change.make_message() == str(spyff)
 
 
 class TestFunctionPyfferenceRecorder:

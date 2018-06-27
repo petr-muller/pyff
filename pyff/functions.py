@@ -27,6 +27,9 @@ class FunctionImplementationChange(Hashable):  # pylint: disable=too-few-public-
     def __hash__(self):
         return hash("FunctionImplementationChange")
 
+    def __repr__(self):
+        return "FunctionImplementationChange"
+
 
 class ExternalUsageChange(FunctionImplementationChange):  # pylint: disable=too-few-public-methods
     """Represents any change in how function uses external names"""
@@ -51,12 +54,24 @@ class ExternalUsageChange(FunctionImplementationChange):  # pylint: disable=too-
     def __hash__(self):
         return hash("ExternalUsageChange")
 
+    def __repr__(self):
+        return f"ExternalUsageChange(gone={self.gone}, appeared={self.appeared})"
+
 
 class StatementChange(FunctionImplementationChange):  # pylint: disable=too-few-public-methods
     """Represents a change between two statements"""
 
     def __init__(self, change: ps.StatementPyfference) -> None:
         self.change: ps.StatementPyfference = change
+
+    def make_message(self) -> str:
+        return str(self.change)
+
+    def __hash__(self):
+        return hash("StatementChange")
+
+    def __repr__(self):
+        return f"StatementChange(change={self.change})"
 
 
 class FunctionPyfference:  # pylint: disable=too-few-public-methods
@@ -90,6 +105,12 @@ class FunctionPyfference:  # pylint: disable=too-few-public-methods
     def simplify(self) -> Optional["FunctionPyfference"]:
         """Cleans empty differences, empty sets etc. after manipulation"""
         return self if self.old_name or self.implementation else None
+
+    def __repr__(self):
+        return (
+            f"FunctionPyfference(name={self.name}, implementation={self.implementation}, "
+            f"old_name={self.old_name})"
+        )
 
 
 class FunctionSummary:  # pylint: disable=too-few-public-methods
@@ -146,7 +167,6 @@ class ExternalNamesExtractor(ast.NodeVisitor):
 
     def visit_Name(self, node):  # pylint: disable=invalid-name
         """Compare all names against a list of imported names"""
-        LOGGER.debug(f"Visiting Name node: {node.id}")
         self.in_progress = None
         self.generic_visit(node)
         if node.id in self.imported_names:
@@ -156,7 +176,6 @@ class ExternalNamesExtractor(ast.NodeVisitor):
 
     def visit_Attribute(self, node):  # pylint: disable=invalid-name
         """..."""
-        LOGGER.debug(f"Visiting Attribute node: {node.attr}")
         self.in_progress = None
         self.generic_visit(node)
         if self.in_progress is not None:
@@ -233,7 +252,6 @@ def pyff_function(
         difference_recorder.name_changed(old.name)
 
     for old_statement, new_statement in zip_longest(old.body, new.body):
-        LOGGER.debug("Comparing statements:")
         if old_statement is None or new_statement is None:
             LOGGER.debug(f"  old={repr(old_statement)}")
             LOGGER.debug(f"  new={repr(new_statement)}")
@@ -243,12 +261,16 @@ def pyff_function(
             difference_recorder.implementation_changed(FunctionImplementationChange())
             break
 
-        LOGGER.debug(f"  old={ast.dump(old_statement)}")
-        LOGGER.debug(f"  new={ast.dump(new_statement)}")
         change = ps.pyff_statement(old_statement, new_statement, old_imports, new_imports)
         if change:
             LOGGER.debug("  Statements are different")
-            difference_recorder.implementation_changed(StatementChange(change))
+            LOGGER.debug(f"  old={ast.dump(old_statement)}")
+            LOGGER.debug(f"  new={ast.dump(new_statement)}")
+            LOGGER.debug(f"  change={repr(change)}")
+            if change.is_specific():
+                difference_recorder.implementation_changed(StatementChange(change))
+            else:
+                difference_recorder.implementation_changed(FunctionImplementationChange())
 
     LOGGER.debug("Comparing imported name usage")
     external_name_usage_difference = compare_import_usage(old, new, old_imports, new_imports)
@@ -356,6 +378,7 @@ def pyff_functions(old: ast.Module, new: ast.Module) -> Optional[FunctionsPyffer
             old_import_walker.names,
             new_import_walker.names,
         )
+        LOGGER.debug(repr(difference))
         if difference:
             LOGGER.debug(f"Function {function} differs")
             differences[function] = difference
