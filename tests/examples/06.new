@@ -1,0 +1,86 @@
+# Expected output for `clitest`
+# $ . helpers/helpers.sh
+# $
+#
+# $ example_quotes 06
+# New imported package 're'
+# New module-level variable 'PLAYER_PATTERN'
+# New class 'Player' with 0 public methods
+# New function 'parse_player'
+# Class 'Game' changed:
+#   - Removed attributes 'players', 'points'
+#   - New attribute 'player_results'
+#   - Method '__init__' changed implementation:
+#     - Code semantics changed
+#   - New property method 'players'
+#   - Method '__str__' changed implementation:
+#     - Code semantics changed
+# $
+
+"""Log of a single VtES game"""
+
+import re
+from typing import Sequence
+
+PLAYER_PATTERN = r"(?P<name>[^(:]+)(\((?P<deck>.*)\)){0,1}(:(?P<points>\d(\.5){0,1})){0,1}"
+
+class Player:
+    """Represents a player result of a game"""
+    # pylint: disable=too-few-public-methods
+    def __init__(self, name: str, deck: str, points: float) -> None:
+        self.name: str = name
+        self.deck: str = deck
+        self.points: float = points
+
+    def __str__(self) -> str:
+        deck = f" ({self.deck})" if self.deck is not None else ""
+        points = f" {self.points:g}VP" if self.points else ""
+        return self.name + deck + points
+
+
+def parse_player(raw_player: str) -> Player:
+    """Parse a player-in-a-game input
+
+    Example: 'player(deck):3'"""
+    match = re.match(PLAYER_PATTERN, raw_player)
+    player = match.group("name")
+    deck = match.group("deck") or None
+    points = int(match.group("points")) if match.group("points") is not None else None
+
+    return Player(player, deck, points)
+
+
+class Game:
+    """Represents a VtES game"""
+    # pylint: disable=too-few-public-methods
+    def __init__(self, table: Sequence[str]) -> None:
+        self.table: Sequence[str] = table
+        self.winning_points: float = None
+        self.winner: str = None
+        self.player_results: Sequence[Player] = []
+
+        for item in self.table:
+            player = parse_player(item)
+            self.player_results.append(player)
+
+            if player.points is not None:
+                if player.points > 1 and player.points > (self.winning_points or 0):
+                    self.winning_points = player.points
+                    self.winner = player.name
+                elif player.points > 1 and player.points == self.winning_points:
+                    self.winning_points = None
+                    self.winner = None
+
+    @property
+    def players(self) -> Sequence[str]:
+        """Return a list of player names"""
+        return [player.name for player in self.player_results]
+
+    def __str__(self) -> str:
+        players = []
+        for player in self.player_results:
+            players.append(str(player))
+            if self.winner and player.name == self.winner:
+                players[-1] += " GW"
+
+        return " \u25b6 ".join(players)
