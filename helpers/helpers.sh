@@ -6,6 +6,10 @@ example() {
   pyff tests/examples/$1*.old tests/examples/$1*.new
 }
 
+extest() {
+    helpers/clitest --prefix '# ' --diff-options '-u --color=always' tests/examples/$1*.new
+}
+
 exdebug() {
   pyff tests/examples/$1*.old tests/examples/$1*.new  --debug
 }
