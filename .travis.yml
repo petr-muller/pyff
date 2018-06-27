@@ -14,7 +14,7 @@ before_script:
   - ./cc-test-reporter before-build && python setup.py develop
 
 script:
-  - python setup.py test && mypy pyff
+  - python setup.py test && pylint --rcfile .pylintrc pyff && mypy pyff
 
 after_success:
   - python-codacy-coverage -r coverage.xml
