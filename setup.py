@@ -1,12 +1,16 @@
 """Python diff"""
 
-from setuptools import setup
+import setuptools
+import pyff
 
-setup(
-    name="pyff",
-    version="0.0.0",
+with open("README.md", "r") as fh:
+    long_description = fh.read()
+
+setuptools.setup(
+    name="pythondiff",
+    version=pyff.__version__,
     description="Python Diff",
-    # long_description=
+    long_description=long_description,
     # url=
     author="Petr Muller",
     author_email="afri@afri.cz",
