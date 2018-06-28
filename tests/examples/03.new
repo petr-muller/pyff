@@ -7,11 +7,11 @@
 # New imported 'Sequence' from new 'typing'
 # New imported 'Game' from new 'vtes.game'
 # New imported 'GameStore', 'load_store' from new 'vtes.store'
+# Function 'main' changed implementation:
+#   Code semantics changed
+#   Newly uses imported 'Path'
 # New function 'add_command'
 # New function 'games_command'
-# Function 'main' changed implementation:
-#   - Code semantics changed
-#   - Newly uses imported 'Path'
 
 """Entry point for the `vtes` command"""
 

@@ -47,9 +47,11 @@ class ModulePyfference:  # pylint: disable=too-few-public-methods
 
 def pyff_module(old: ast.Module, new: ast.Module) -> Optional[ModulePyfference]:
     """Return difference between two Python modules, or None if they are identical"""
+    old_imports = pi.ImportedNames.extract(old)
+    new_imports = pi.ImportedNames.extract(new)
     imports = pi.pyff_imports(old, new)
-    classes = pc.pyff_classes(old, new)
-    functions = pf.pyff_functions(old, new)
+    classes = pc.pyff_classes(old, new, old_imports, new_imports)
+    functions = pf.pyff_functions(old, new, old_imports, new_imports)
 
     if imports or classes or functions:
         LOGGER.debug("Modules differ")

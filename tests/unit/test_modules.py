@@ -21,12 +21,15 @@ class TestModulePyfference:
         )
         imports = pi.ImportedNames.compare(old, new)
         functions = pf.FunctionsPyfference(
-            new={pf.FunctionSummary("function"), pf.FunctionSummary("funktion")},
+            new={
+                "function": pf.FunctionSummary("function"),
+                "funktion": pf.FunctionSummary("funktion"),
+            },
             changed={
                 "name": pf.FunctionPyfference("name", old_name="old_name", implementation=set())
             },
         )
-        classes = pc.ClassesPyfference(new={"NewClass2", "NewClass"})
+        classes = pc.ClassesPyfference(new={"NewClass2", "NewClass"}, changed=set())
         change = pm.ModulePyfference(imports, classes, functions)
         assert change.classes is not None
         assert change.functions is not None
@@ -39,9 +42,9 @@ class TestModulePyfference:
             "New imported ``nine'' from new ``eight''\n"
             "New NewClass\n"
             "New NewClass2\n"
+            "Function ``old_name'' renamed to ``name''\n"
             "New function ``function''\n"
-            "New function ``funktion''\n"
-            "Function ``old_name'' renamed to ``name''"
+            "New function ``funktion''"
         )
         assert change.simplify() is change
 

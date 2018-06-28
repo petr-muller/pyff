@@ -93,12 +93,17 @@ class TestFunctionPyfference:
         change = pf.FunctionPyfference(name="function", implementation=set(), old_name="funktion")
         assert str(change) == "Function ``funktion'' renamed to ``function''"
 
+    def test_method_name_change(self):
+        change = pf.FunctionPyfference(name="function", implementation=set(), old_name="funktion")
+        change.set_method()
+        assert str(change) == "Method ``funktion'' renamed to ``function''"
+
     def test_implementation_change(self):
         fic = pf.FunctionImplementationChange()
         change = pf.FunctionPyfference(name="function", implementation={fic})
         assert (
             str(change) == "Function ``function'' changed implementation:\n"
-            "  - Code semantics changed"
+            "  Code semantics changed"
         )
 
     def test_simplify(self):
@@ -294,20 +299,29 @@ class TestFunctionsExtractor:
 
 class TestFunctionsPyfference:
     def test_sanity(self):
-        new = {pf.FunctionSummary("function"), pf.FunctionSummary("funktion")}
+        new = {
+            "function": pf.FunctionSummary("function"),
+            "funktion": pf.FunctionSummary("funktion"),
+        }
         changed = {
             "another": pf.FunctionPyfference(
                 "another", old_name="old_another", implementation=set()
             )
         }
         change = pf.FunctionsPyfference(new=new, changed=changed)
-        assert pf.FunctionSummary("function") in change.new
-        assert pf.FunctionSummary("funktion") in change.new
+        assert change.new["function"] == pf.FunctionSummary("function")
+        assert change.new["funktion"] == pf.FunctionSummary("funktion")
         assert change.changed["another"].old_name == "old_another"
         assert str(change) == (
+            "Function ``old_another'' renamed to ``another''\n"
             "New function ``function''\n"
-            "New function ``funktion''\n"
-            "Function ``old_another'' renamed to ``another''"
+            "New function ``funktion''"
+        )
+        change.set_method()
+        assert str(change) == (
+            "Method ``old_another'' renamed to ``another''\n"
+            "New method ``function''\n"
+            "New method ``funktion''"
         )
 
 
@@ -324,10 +338,12 @@ class TestPyffFunctions:
             "def new_funktion():\n"
             "   pass"
         )
-        change = pf.pyff_functions(old, new)
+        old_imports = pi.ImportedNames.extract(old)
+        new_imports = pi.ImportedNames.extract(new)
+        change = pf.pyff_functions(old, new, old_imports, new_imports)
         assert change is not None
         assert len(change.new) == 1
-        new_funktion, = change.new
+        new_funktion = change.new["new_funktion"]
         assert new_funktion.name == "new_funktion"
 
         assert len(change.changed) == 1
@@ -344,7 +360,9 @@ class TestPyffFunctions:
             "def funktion(arg: Path) -> Path:\n"
             "   return GLOBAL / arg"
         )
-        change = pf.pyff_functions(old, new)
+        old_imports = pi.ImportedNames.extract(old)
+        new_imports = pi.ImportedNames.extract(new)
+        change = pf.pyff_functions(old, new, old_imports, new_imports)
         # right now, we do not detect different type hints
         assert change is None
 
@@ -352,4 +370,5 @@ class TestPyffFunctions:
         module = ast.parse(
             "def same_funktion():\n" "   pass\n" "def changed_funktion():\n" "   pass\n"
         )
-        assert pf.pyff_functions(module, module) is None
+        imports = pi.ImportedNames.extract(module)
+        assert pf.pyff_functions(module, module, imports, imports) is None

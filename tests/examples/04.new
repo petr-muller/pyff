@@ -5,9 +5,9 @@
 # $ example_quotes 04
 # New imported package 'pathlib' (previously, only 'Path' was imported from 'pathlib')
 # Function 'main' changed implementation:
-#   - No longer uses imported 'Path'
-#   - Newly uses imported 'pathlib'
-#   - References of 'Path' were changed to 'pathlib.Path'
+#   No longer uses imported 'Path'
+#   Newly uses imported 'pathlib'
+#   References of 'Path' were changed to 'pathlib.Path'
 # $
 
 """Entry point for the `vtes` command"""

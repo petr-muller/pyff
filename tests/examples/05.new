@@ -4,11 +4,12 @@
 #
 # $ example_quotes 05
 # New imported 'Sequence' from new 'typing'
-# Class 'Game' was changed:
-#   - New attributes 'winning_points', 'winner', 'players', 'points'
-#   - Method '__init__' changed implementation:
-#     - Code semantics changed
-#   - New method '__str__'
+# Class 'Game' changed:
+#   New attributes 'winning_points', 'winner', 'players', 'points'
+#   Method '__init__' changed implementation:
+#     Code semantics changed
+#     Newly uses imported 'Sequence'
+#   New method '__str__'
 # $
 
 """Log of a single VtES game"""
