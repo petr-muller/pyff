@@ -3,7 +3,7 @@
 import ast
 import logging
 from itertools import zip_longest
-from typing import Optional, cast, Set, Dict, List
+from typing import Optional, cast, Set, Dict, List, Union
 from collections.abc import Hashable
 
 import pyff.imports as pi
@@ -86,21 +86,26 @@ class FunctionPyfference:  # pylint: disable=too-few-public-methods
         self.name: str = name
         self.old_name: Optional[str] = old_name
         self.implementation: Set[FunctionImplementationChange] = implementation
+        self._noun: str = "Function"
 
     def __str__(self) -> str:
         lines: List[str] = []
         if self.old_name is not None:
-            lines.append(f"Function {hl(self.old_name)} renamed to {hl(self.name)}")
+            lines.append(f"{self._noun} {hl(self.old_name)} renamed to {hl(self.name)}")
 
         if self.implementation:
-            lines.append(f"Function {hl(self.name)} changed implementation:")
+            lines.append(f"{self._noun} {hl(self.name)} changed implementation:")
 
         implementation_changes = []
         for change in self.implementation:
-            implementation_changes.append("  - " + change.make_message().replace("\n", "\n  - "))
+            implementation_changes.append("  " + change.make_message().replace("\n", "\n  "))
         lines.extend(sorted(implementation_changes))
 
         return "\n".join(lines)
+
+    def set_method(self):
+        """Used when FunctionPyfference is used in context of a class"""
+        self._noun = "Method"
 
     def simplify(self) -> Optional["FunctionPyfference"]:
         """Cleans empty differences, empty sets etc. after manipulation"""
@@ -109,7 +114,7 @@ class FunctionPyfference:  # pylint: disable=too-few-public-methods
     def __repr__(self):
         return (
             f"FunctionPyfference(name={self.name}, implementation={self.implementation}, "
-            f"old_name={self.old_name})"
+            f"old_name={self.old_name}, noun={self._noun})"
         )
 
 
@@ -117,16 +122,21 @@ class FunctionSummary:  # pylint: disable=too-few-public-methods
     """Contains summary information about a function"""
 
     def __init__(self, name: str) -> None:
-        self.name = name
+        self.name: str = name
+        self._noun: str = "function"
 
     def __eq__(self, other):
         return self.name == other.name
 
-    def __hash__(self):
-        return hash((self.name,))
+    def set_method(self):
+        """Used when FunctionPyfference is used in context of a class"""
+        self._noun = "method"
 
     def __str__(self):
-        return f"function {hl(self.name)}"
+        return f"{self._noun} {hl(self.name)}"
+
+    def __repr__(self):
+        return f"FunctionSummary(name={self.name})"
 
 
 class FunctionPyfferenceRecorder:
@@ -332,15 +342,24 @@ class FunctionsExtractor(ast.NodeVisitor):
 class FunctionsPyfference:  # pylint: disable=too-few-public-methods
     """Holds differences between top-level functions in a module"""
 
-    def __init__(self, new: Set[FunctionSummary], changed: Dict[str, FunctionPyfference]) -> None:
+    def __init__(
+        self, new: Dict[str, FunctionSummary], changed: Dict[str, FunctionPyfference]
+    ) -> None:
         self.changed: Dict[str, FunctionPyfference] = changed
-        self.new: Set[FunctionSummary] = new
+        self.new: Dict[str, FunctionSummary] = new
 
     def __str__(self) -> str:
-        changed = "\n".join([str(change) for change in self.changed.values()])
-        new = "\n".join([f"New {f}" for f in sorted([str(name) for name in self.new])])
+        changed = "\n".join([str(self.changed[name]) for name in sorted(self.changed)])
+        new = "\n".join([f"New {f}" for f in sorted([str(self.new[name]) for name in self.new])])
 
-        return "\n".join([changeset for changeset in (new, changed) if changeset])
+        return "\n".join([changeset for changeset in (changed, new) if changeset])
+
+    def set_method(self):
+        """Used when FunctionPyfference is used in context of a class"""
+        for function in self.changed.values():
+            function.set_method()
+        for function in self.new.values():
+            function.set_method()
 
     def simplify(self) -> Optional["FunctionsPyfference"]:
         """Cleans empty differences, empty sets etc. after manipulation"""
@@ -354,39 +373,39 @@ class FunctionsPyfference:  # pylint: disable=too-few-public-methods
         return self if self.new or self.changed else None
 
 
-def pyff_functions(old: ast.Module, new: ast.Module) -> Optional[FunctionsPyfference]:
+def pyff_functions(
+    old: Union[ast.Module, ast.ClassDef],
+    new: Union[ast.Module, ast.ClassDef],
+    old_imports: pi.ImportedNames,
+    new_imports: pi.ImportedNames,
+) -> Optional[FunctionsPyfference]:
     """Return differences in top-level functions in two modules"""
     old_walker = FunctionsExtractor()
     new_walker = FunctionsExtractor()
 
-    old_import_walker = pi.ImportExtractor()
-    new_import_walker = pi.ImportExtractor()
+    for node in old.body:
+        old_walker.visit(node)
 
-    old_walker.visit(old)
-    new_walker.visit(new)
-    old_import_walker.visit(old)
-    new_import_walker.visit(new)
+    for node in new.body:
+        new_walker.visit(node)
 
-    both = old_walker.names.intersection(new_walker.names)
+    both: Set[str] = old_walker.names.intersection(new_walker.names)
     LOGGER.debug(f"Functions present in both modules: {both}")
-    differences = {}
+    differences: Dict[str, FunctionPyfference] = {}
     for function in both:
         LOGGER.debug(f"Comparing function '{function}'")
         difference = pyff_function(
-            old_walker.functions[function],
-            new_walker.functions[function],
-            old_import_walker.names,
-            new_import_walker.names,
+            old_walker.functions[function], new_walker.functions[function], old_imports, new_imports
         )
-        LOGGER.debug(repr(difference))
+        LOGGER.debug(f"Difference: {repr(difference)}")
         if difference:
             LOGGER.debug(f"Function {function} differs")
             differences[function] = difference
         else:
             LOGGER.debug(f"Function {function} is identical")
 
-    new_names = new_walker.names - old_walker.names
-    new_functions = {FunctionSummary(name) for name in new_names}
+    new_names: Set[str] = new_walker.names - old_walker.names
+    new_functions: Dict[str, FunctionSummary] = {name: FunctionSummary(name) for name in new_names}
     LOGGER.debug(f"New functions: {new_names}")
 
     if differences or new_functions:

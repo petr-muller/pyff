@@ -6,8 +6,8 @@
 # New imported 'Action', 'ArgumentParser' from new 'argparse'
 # New class 'ParsePlayerAction' derived from imported 'Action' with 0 public methods
 # Function 'main' changed implementation:
-#   - Code semantics changed
-#   - Newly uses imported 'ArgumentParser'
+#   Code semantics changed
+#   Newly uses imported 'ArgumentParser'
 # $
 
 from argparse import Action, ArgumentParser

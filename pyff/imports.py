@@ -308,6 +308,13 @@ class ImportedNames(collections.abc.Mapping):  # pylint: disable=too-few-public-
     """Dictionary mapping external names to appropriate ImportedName"""
 
     @staticmethod
+    def extract(code: ast.Module) -> "ImportedNames":
+        """Extracts ImportedNames from a Module"""
+        import_walker = ImportExtractor()
+        import_walker.visit(code)
+        return import_walker.names
+
+    @staticmethod
     def compare(old: "ImportedNames", new: "ImportedNames") -> Optional[ImportsPyfference]:
         """Compare two sets of imported names."""
         LOGGER.debug("Comparing ImportedNames")

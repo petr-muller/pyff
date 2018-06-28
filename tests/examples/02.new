@@ -4,6 +4,11 @@
 #
 # $ example_quotes 02
 # New imported 'Sequence' from new 'typing'
+# Class 'Game' changed:
+#   Method '__init__' changed implementation:
+#     Code semantics changed
+#     Newly uses imported 'Sequence'
+#   New method '__str__'
 # $
 
 """Log of a single VtES game"""
