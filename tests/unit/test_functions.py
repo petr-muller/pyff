@@ -1,7 +1,8 @@
 # pylint: disable=missing-docstring, no-self-use, too-few-public-methods
 
 import ast
-from pytest import raises, fixture
+from unittest.mock import Mock
+import pytest
 import pyff.functions as pf
 import pyff.imports as pi
 import pyff.statements as ps
@@ -189,25 +190,31 @@ class TestCompareImportUsage:
 
 
 class TestPyffFunction:
+    @staticmethod
+    def _make_summary(code: str):
+        extractor = pf.FunctionsExtractor()
+        extractor.visit(ast.parse(code))
+        return extractor.functions.popitem()[1]
+
     def test_identical(self):
         # ast.parse gives us ast.Module
-        old = ast.parse("def function(): return os.path.join(lst)").body[0]
-        new = ast.parse("def function(): return os.path.join(lst)").body[0]
+        old = self._make_summary("def function(): return os.path.join(lst)")
+        new = self._make_summary("def function(): return os.path.join(lst)")
 
         assert pf.pyff_function(old, new, pi.ImportedNames(), pi.ImportedNames()) is None
 
     def test_namechange(self):
         # ast.parse gives us ast.Module
-        old = ast.parse("def function(): return os.path.join(lst)").body[0]
-        new = ast.parse("def funktion(): return os.path.join(lst)").body[0]
+        old = self._make_summary("def function(): return os.path.join(lst)")
+        new = self._make_summary("def funktion(): return os.path.join(lst)")
 
         pyfference = pf.pyff_function(old, new, pi.ImportedNames(), pi.ImportedNames())
         assert pyfference.name == "funktion"
         assert pyfference.old_name == "function"
 
     def test_imports_fixes(self):
-        old = ast.parse("def function(): return path.join(lst)").body[0]
-        new = ast.parse("def function(): return pathy.join(lst)").body[0]
+        old = self._make_summary("def function(): return path.join(lst)")
+        new = self._make_summary("def function(): return pathy.join(lst)")
         old_imports = parse_imports("from os import path")
         new_imports = parse_imports("from os import path as pathy")
 
@@ -215,8 +222,8 @@ class TestPyffFunction:
         assert len(pyfference.implementation) == 2
 
     def test_external_name_usage(self):
-        old = ast.parse("def function(): return some_path").body[0]
-        new = ast.parse("def function(): return pathy.join(lst)").body[0]
+        old = self._make_summary("def function(): return some_path")
+        new = self._make_summary("def function(): return pathy.join(lst)")
         old_imports = parse_imports("from os import path")
         new_imports = parse_imports("from os import path as pathy")
 
@@ -224,8 +231,8 @@ class TestPyffFunction:
         assert len(pyfference.implementation) == 2
 
     def test_different_statement_count(self):
-        old = ast.parse("def function(): do_some_useless_stuff();").body[0]
-        new = ast.parse("def function(): do_some_useless_stuff(); return None").body[0]
+        old = self._make_summary("def function(): do_some_useless_stuff();")
+        new = self._make_summary("def function(): do_some_useless_stuff(); return None")
         no_imports = parse_imports("")
 
         pyfference = pf.pyff_function(old, new, no_imports, no_imports)
@@ -254,24 +261,40 @@ class TestPyffFunctionCode:
         assert pyfference.old_name == "function"
 
     def test_invalid(self):
-        with raises(ValueError):
+        with pytest.raises(ValueError):
             pf.pyff_function_code(self.FUNCTION, self.KLASS, pi.ImportedNames(), pi.ImportedNames())
 
-        with raises(ValueError):
+        with pytest.raises(ValueError):
             pf.pyff_function_code(self.KLASS, self.FUNKTION, pi.ImportedNames(), pi.ImportedNames())
 
 
 class TestFunctionSummary:
-    def test_sanity(self):
-        summary = pf.FunctionSummary("funktion")
+    @pytest.fixture
+    def mocked_node(self):
+        return Mock(spec=ast.FunctionDef)
+
+    def test_sanity(self, mocked_node):
+        summary = pf.FunctionSummary("funktion", node=mocked_node)
         assert summary.name == "funktion"
-        assert summary == pf.FunctionSummary("funktion")
-        assert summary != pf.FunctionSummary("function")
+        assert summary == pf.FunctionSummary("funktion", node=mocked_node)
+        assert summary != pf.FunctionSummary("function", node=mocked_node)
         assert str(summary) == "function ``funktion''"
+
+    def test_set_method(self, mocked_node):
+        summary = pf.FunctionSummary("funktion", node=mocked_node)
+        summary.set_method()
+        assert str(summary) == "method ``funktion''"
+
+    def test_property(self, mocked_node):
+        noprop = pf.FunctionSummary("funktion", node=mocked_node)
+        assert not noprop.property
+        prop = pf.FunctionSummary("funktion", is_property=True, node=mocked_node)
+        assert prop.property
+        assert str(prop) == "property function ``funktion''"
 
 
 class TestFunctionsExtractor:
-    @fixture
+    @pytest.fixture
     def extractor(self):
         return pf.FunctionsExtractor()
 
@@ -296,29 +319,44 @@ class TestFunctionsExtractor:
         assert extractor.names == {"funktion"}
         assert "method" not in extractor.functions
 
+    def test_property_functions(self, extractor):
+        extractor.visit(ast.parse("@property\ndef prop(): pass"))
+        assert str(extractor.functions["prop"]) == "property function ``prop''"
+
 
 class TestFunctionsPyfference:
     def test_sanity(self):
+        mocked_node = Mock(spec=ast.FunctionDef)
         new = {
-            "function": pf.FunctionSummary("function"),
-            "funktion": pf.FunctionSummary("funktion"),
+            "function": pf.FunctionSummary("function", node=mocked_node),
+            "funktion": pf.FunctionSummary("funktion", node=mocked_node),
         }
         changed = {
             "another": pf.FunctionPyfference(
                 "another", old_name="old_another", implementation=set()
             )
         }
-        change = pf.FunctionsPyfference(new=new, changed=changed)
-        assert change.new["function"] == pf.FunctionSummary("function")
-        assert change.new["funktion"] == pf.FunctionSummary("funktion")
+        removed = {
+            "gone": pf.FunctionSummary("gone", node=mocked_node),
+            "for_good": pf.FunctionSummary("for_good", node=mocked_node),
+        }
+        change = pf.FunctionsPyfference(new=new, changed=changed, removed=removed)
+        assert change.new["function"] == pf.FunctionSummary("function", node=mocked_node)
+        assert change.new["funktion"] == pf.FunctionSummary("funktion", node=mocked_node)
+        assert change.removed["gone"] == pf.FunctionSummary("gone", node=mocked_node)
+        assert change.removed["for_good"] == pf.FunctionSummary("for_good", node=mocked_node)
         assert change.changed["another"].old_name == "old_another"
         assert str(change) == (
+            "Removed function ``for_good''\n"
+            "Removed function ``gone''\n"
             "Function ``old_another'' renamed to ``another''\n"
             "New function ``function''\n"
             "New function ``funktion''"
         )
         change.set_method()
         assert str(change) == (
+            "Removed method ``for_good''\n"
+            "Removed method ``gone''\n"
             "Method ``old_another'' renamed to ``another''\n"
             "New method ``function''\n"
             "New method ``funktion''"
@@ -348,6 +386,20 @@ class TestPyffFunctions:
 
         assert len(change.changed) == 1
         assert "changed_funktion" in change.changed
+
+    def test_property_functions(self):
+        no_method = ast.parse("")
+        property_method = ast.parse("@property\ndef property_method(): pass")
+        no_imports = pi.ImportedNames.extract(no_method)
+
+        assert (
+            str(pf.pyff_functions(no_method, property_method, no_imports, no_imports))
+            == "New property function ``property_method''"
+        )
+        assert (
+            str(pf.pyff_functions(property_method, no_method, no_imports, no_imports))
+            == "Removed property function ``property_method''"
+        )
 
     def test_changed_arguments(self):
         old = ast.parse(
