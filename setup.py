@@ -4,14 +4,15 @@ import setuptools
 import pyff
 
 with open("README.md", "r") as fh:
-    long_description = fh.read()
+    LONG_DESCRIPTION = fh.read()
 
 setuptools.setup(
     name="pythondiff",
     version=pyff.__version__,
     description="Python Diff",
-    long_description=long_description,
-    # url=
+    long_description=LONG_DESCRIPTION,
+    long_description_content_type="text/markdown",
+    url="https://github.com/petr-muller/pyff",
     author="Petr Muller",
     author_email="afri@afri.cz",
     classifiers=[
