@@ -2,6 +2,8 @@
 
 import ast
 
+from unittest.mock import Mock
+
 import pyff.modules as pm
 import pyff.imports as pi
 import pyff.functions as pf
@@ -22,12 +24,13 @@ class TestModulePyfference:
         imports = pi.ImportedNames.compare(old, new)
         functions = pf.FunctionsPyfference(
             new={
-                "function": pf.FunctionSummary("function"),
-                "funktion": pf.FunctionSummary("funktion"),
+                "function": pf.FunctionSummary("function", node=Mock(spec=ast.FunctionDef)),
+                "funktion": pf.FunctionSummary("funktion", node=Mock(spec=ast.FunctionDef)),
             },
             changed={
                 "name": pf.FunctionPyfference("name", old_name="old_name", implementation=set())
             },
+            removed={},
         )
         classes = pc.ClassesPyfference(new={"NewClass2", "NewClass"}, changed=set())
         change = pm.ModulePyfference(imports, classes, functions)
