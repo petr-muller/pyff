@@ -4,10 +4,7 @@
 #
 # $ example_quotes 06
 # New imported package 're'
-# New module-level variable 'PLAYER_PATTERN'
 # Class 'Game' changed:
-#   Removed attributes 'players', 'points'
-#   New attribute 'player_results'
 #   Method '__init__' changed implementation:
 #     Code semantics changed
 #   Method '__str__' changed implementation:
@@ -16,6 +13,10 @@
 # New class 'Player' with 0 public methods
 # New function 'parse_player'
 # $
+# TODO:
+# New module-level variable 'PLAYER_PATTERN'
+#   Removed attributes 'players', 'points'
+#   New attribute 'player_results'
 
 """Log of a single VtES game"""
 
