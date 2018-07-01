@@ -4,7 +4,7 @@ import ast
 import logging
 from types import MappingProxyType
 from typing import Union, List, Optional, Set, FrozenSet, Dict, Mapping
-from pyff.kitchensink import hl, pluralize
+from pyff.kitchensink import hl, pluralize, hlistify
 import pyff.imports as pi
 import pyff.functions as pf
 
@@ -42,26 +42,36 @@ class ClassSummary:  # pylint: disable=too-few-public-methods
 
     def __init__(
         self,
-        methods: int,
-        private: int,
+        methods: Set[str],
         definition: ast.ClassDef,
+        attributes: Set[str],
         baseclasses: Optional[List[BaseClassType]] = None,
     ) -> None:
-        self.methods: int = methods
-        self.private_methods: int = private
-        self.public_methods: int = methods - private
+        self.methods: Set[str] = methods
+        self.attributes = frozenset(attributes)
         self.baseclasses: Optional[List[BaseClassType]] = baseclasses
         self.definition = definition
 
     @property
-    def name(self):
+    def name(self) -> str:
         """Returns class name"""
         return self.definition.name
 
+    @property
+    def public_methods(self) -> FrozenSet[str]:
+        """Return public methods of the class"""
+        return frozenset({method for method in self.methods if not method.startswith("_")})
+
+    @property
+    def private_methods(self) -> FrozenSet[str]:
+        """Return public methods of the class"""
+        return frozenset({method for method in self.methods if method.startswith("_")})
+
     def __str__(self) -> str:
+        LOGGER.debug("String: %s", repr(self))
         class_part: str = f"class {hl(self.name)}"
         methods = pluralize("method", self.public_methods)
-        method_part: str = f"with {self.public_methods} public {methods}"
+        method_part: str = f"with {len(self.public_methods)} public {methods}"
 
         if not self.baseclasses:
             return f"{class_part} {method_part}"
@@ -70,14 +80,71 @@ class ClassSummary:  # pylint: disable=too-few-public-methods
 
         raise Exception("Multiple inheritance not yet implemented")
 
+    def __repr__(self):
+        return (
+            f"ClassSummary(methods={self.methods}, attributes={self.attributes}, "
+            f"bases={self.baseclasses}, AST={self.definition}"
+        )
+
 
 class ClassesExtractor(ast.NodeVisitor):
     """Extracts information about classes in a module"""
 
+    class SelfAttributeExtractor(ast.NodeVisitor):
+        """Extracts self attributes references used in the node"""
+
+        def __init__(self):
+            self.attributes: Set[str] = set()
+
+        def visit_Attribute(self, node):  # pylint: disable=invalid-name
+            """self.attribute -> 'attribute'"""
+            if isinstance(node.value, ast.Name) and node.value.id == "self":
+                self.attributes.add(node.attr)
+
+    class AssignmentExtractor(ast.NodeVisitor):
+        """Extracts self attributes used as assignment targets"""
+
+        def __init__(self):
+            self.attributes: Set[str] = set()
+            self.extractor = ClassesExtractor.SelfAttributeExtractor()
+
+        def visit_Assign(self, node):  # pylint: disable=invalid-name
+            """'self.attribute = value' -> 'attribute'"""
+            for target in node.targets:
+                self.extractor.visit(target)
+            self.attributes.update(self.extractor.attributes)
+
+        def visit_AnnAssign(self, node):  # pylint: disable=invalid-name
+            """'self.attribute: typehint = value' -> 'attribute'"""
+            self.extractor.visit(node.target)
+            self.attributes.update(self.extractor.attributes)
+
+    class MethodExtractor(ast.NodeVisitor):
+        """Extracts information about a method"""
+
+        @staticmethod
+        def extract_attributes(node: ast.FunctionDef) -> FrozenSet[str]:
+            """Extract attributes used in the method"""
+            LOGGER.debug("Extracting attributes from method '%s", node.name)
+            extractor = ClassesExtractor.AssignmentExtractor()
+            for statement in node.body:
+                extractor.visit(statement)
+
+            LOGGER.debug("Discovered attributes '%s'", extractor.attributes)
+            return frozenset(extractor.attributes)
+
+        def __init__(self):
+            self.methods: Set[str] = set()
+            self.attributes: Set[str] = set()
+
+        def visit_FunctionDef(self, node):  # pylint: disable=invalid-name
+            """Save counts of encountered private/public methods"""
+            LOGGER.debug("Extracting information about method '%s'", node.name)
+            self.methods.add(node.name)
+            self.attributes.update(self.extract_attributes(node))
+
     def __init__(self, names: Optional[pi.ImportedNames] = None) -> None:
         self._classes: Dict[str, ClassSummary] = {}
-        self._private_methods: int = 0
-        self._methods: int = 0
         self._names: Optional[pi.ImportedNames] = names
 
     @property
@@ -92,38 +159,65 @@ class ClassesExtractor(ast.NodeVisitor):
 
     def visit_ClassDef(self, node):  # pylint: disable=invalid-name
         """Save information about classes that appeared in a module"""
-        self._private_methods: int = 0
-        self._methods: int = 0
-        self.generic_visit(node)
+        LOGGER.debug("Extracting information about class '%s'", node.name)
+
+        extractor = ClassesExtractor.MethodExtractor()
+        extractor.visit(node)
 
         bases: List[str] = []
         for base in node.bases:
             if base.id in self._names:
+                LOGGER.debug("Imported ancestor class '%s', base.id")
                 bases.append(ImportedBaseClass(base.id))
             else:
+                LOGGER.debug("Local ancestor class '%s', base.id")
                 bases.append(LocalBaseClass(base.id))
 
         summary = ClassSummary(
-            self._methods, self._private_methods, baseclasses=bases, definition=node
+            extractor.methods, baseclasses=bases, definition=node, attributes=extractor.attributes
         )
         self._classes[node.name] = summary
 
-    def visit_FunctionDef(self, node):  # pylint: disable=invalid-name
-        """Save counts of encountered private/public methods"""
-        if node.name.startswith("_"):
-            self._private_methods += 1
-        self._methods += 1
+
+class AttributesPyfference:  # pylint: disable=too-few-public-methods
+    """Represents differnces between attributes of two classes"""
+
+    def __init__(self, removed: FrozenSet[str], new: FrozenSet[str]) -> None:
+        self.removed: FrozenSet[str] = removed
+        self.new: FrozenSet[str] = new
+
+    def __str__(self):
+        lines: List[str] = []
+        if self.removed:
+            lines.append(
+                f"Removed {pluralize('attribute', self.removed)} {hlistify(sorted(self.removed))}"
+            )
+        if self.new:
+            lines.append(f"New {pluralize('attribute', self.new)} {hlistify(sorted(self.new))}")
+
+        return "\n".join(lines)
+
+    def __bool__(self) -> bool:
+        return bool(self.removed or self.new)
 
 
 class ClassPyfference:  # pylint: disable=too-few-public-methods
     """Represents differences between two classes"""
 
-    def __init__(self, methods: Optional[pf.FunctionsPyfference]) -> None:
+    def __init__(
+        self,
+        name: str,
+        attributes: Optional[AttributesPyfference],
+        methods: Optional[pf.FunctionsPyfference],
+    ) -> None:
+        self.attributes: Optional[AttributesPyfference] = attributes
         self.methods: Optional[pf.FunctionsPyfference] = methods
-        self.name = "Game"
+        self.name = name
 
     def __str__(self):
         lines = [f"Class {hl(self.name)} changed:"]
+        if self.attributes:
+            lines.append(str(self.attributes))
         if self.methods:
             self.methods.set_method()
             methods = str(self.methods)
@@ -157,9 +251,12 @@ def pyff_class(
 ) -> Optional[ClassPyfference]:
     """Return differences in two classes"""
     methods = pf.pyff_functions(old.definition, new.definition, old_imports, new_imports)
-    if methods:
+    attributes = AttributesPyfference(
+        removed=old.attributes - new.attributes, new=new.attributes - old.attributes
+    )
+    if methods or attributes:
         LOGGER.debug(f"Class '{new.name}' differs")
-        return ClassPyfference(methods=methods)
+        return ClassPyfference(name=new.name, methods=methods, attributes=attributes)
 
     LOGGER.debug(f"Class '{old.name}' is identical")
     return None
