@@ -38,9 +38,22 @@ class TestClassPyfference:
         methods = pf.pyff_functions(
             old, new, pi.ImportedNames.extract(old), pi.ImportedNames.extract(new)
         )
-        change = pc.ClassPyfference(methods=methods)
+        change = pc.ClassPyfference(name="Klass", methods=methods, attributes=None)
         assert change.methods is not None
+        assert change.attributes is None
         assert "method" in change.methods.new
+        assert str(change) == "Class ``Klass'' changed:\n  New method ``method''"
+
+    def test_attributes(self):
+        change = pc.ClassPyfference(
+            name="Klasse",
+            methods=None,
+            attributes=pc.AttributesPyfference(removed=None, new={"super"}),
+        )
+        assert change.methods is None
+        assert change.attributes is not None
+        assert change.attributes.new == {"super"}
+        assert str(change) == "Class ``Klasse'' changed:\n  New attribute ``super''"
 
 
 class TestClassSummary:
@@ -49,15 +62,23 @@ class TestClassSummary:
         return ast.ClassDef(name="Klass", bases=[], keywords=[], body=[], decorator_list=[])
 
     def test_class_summary(self, classdef):
-        cls = pc.ClassSummary(methods=5, private=2, definition=classdef)
+        cls = pc.ClassSummary(
+            methods={"a", "b", "c", "_d", "_e"}, definition=classdef, attributes=set()
+        )
         assert cls.name == "Klass"
-        assert cls.methods == 5
-        assert cls.private_methods == 2
-        assert cls.public_methods == 3
+        assert cls.methods == {"a", "b", "c", "_d", "_e"}
+        assert cls.private_methods == {"_d", "_e"}
+        assert cls.public_methods == {"a", "b", "c"}
         assert str(cls) == "class ``Klass'' with 3 public methods"
 
+    def test_attributes(self, classdef):
+        cls = pc.ClassSummary(
+            methods={"__init__"}, definition=classdef, attributes={"attrib", "field"}
+        )
+        assert cls.attributes == {"attrib", "field"}
+
     def test_singular(self, classdef):
-        cls = pc.ClassSummary(methods=2, private=1, definition=classdef)
+        cls = pc.ClassSummary(methods={"__init__", "a"}, definition=classdef, attributes=set())
         assert str(cls) == "class ``Klass'' with 1 public method"
 
     def test_baseclasses(self):
@@ -68,13 +89,16 @@ class TestClassSummary:
 
     def test_inherited_class_summary(self, classdef):
         local = pc.ClassSummary(
-            methods=0, private=0, baseclasses=[pc.LocalBaseClass("LocalClass")], definition=classdef
+            methods=set(),
+            baseclasses=[pc.LocalBaseClass("LocalClass")],
+            definition=classdef,
+            attributes=set(),
         )
         imported = pc.ClassSummary(
-            methods=0,
-            private=0,
+            methods=set(),
             baseclasses=[pc.ImportedBaseClass("ImportedClass")],
             definition=classdef,
+            attributes=set(),
         )
         assert (
             str(local) == "class ``Klass'' derived from local ``LocalClass'' with 0 public methods"
@@ -86,13 +110,26 @@ class TestClassSummary:
 
     def test_multiple_inherited_summary(self, classdef):
         local = pc.ClassSummary(
-            methods=0,
-            private=0,
+            methods=set(),
             baseclasses=[pc.LocalBaseClass("C1"), pc.LocalBaseClass("C2")],
             definition=classdef,
+            attributes=set(),
         )
         with raises(Exception):
             str(local)
+
+
+class TestAttributesPyfference:
+    def test_sanity(self):
+        change = pc.AttributesPyfference(removed={"gone"}, new={"super", "duper"})
+        assert change
+        assert change.new == {"super", "duper"}
+        assert change.removed == {"gone"}
+        assert str(change) == "Removed attribute ``gone''\nNew attributes ``duper'', ``super''"
+
+    def test_empty(self):
+        change = pc.AttributesPyfference(removed=set(), new=set())
+        assert not change
 
 
 class TestClassesExtractor:
@@ -128,9 +165,9 @@ class TestClassesExtractor:
         extractor.visit(cls)
         assert len(extractor.classes) == 1
         summary = extractor.classes["Klass"]
-        assert summary.methods == 3
-        assert summary.private_methods == 2
-        assert summary.public_methods == 1
+        assert summary.methods == {"__init__", "_private_method", "public_method"}
+        assert summary.private_methods == {"__init__", "_private_method"}
+        assert summary.public_methods == {"public_method"}
         assert str(summary) == "class ``Klass'' with 1 public method"
 
     def test_extract_local_baseclass(self):
@@ -157,6 +194,20 @@ class TestClassesExtractor:
             str(summary)
             == "class ``Klass'' derived from imported ``BaseKlass'' with 0 public methods"
         )
+
+    def test_extract_attribute(self, extractor):
+        klass = ast.parse("class Klass:\n  def __init__(self, value):\n    self.attribute = value")
+        extractor.visit(klass)
+        summary = extractor.classes["Klass"]
+        assert summary.attributes == {"attribute"}
+
+    def test_extract_annotated_attribute(self, extractor):  # pylint: disable=invalid-name
+        klass = ast.parse(
+            "class Klass:\n  def __init__(self, value):\n    self.attribute: typehint = value"
+        )
+        extractor.visit(klass)
+        summary = extractor.classes["Klass"]
+        assert summary.attributes == {"attribute"}
 
 
 class TestClassesPyfference:

@@ -1,6 +1,6 @@
 """Placeholders for various elements in output"""
 
-from typing import Iterable, Union, Sized, cast
+from typing import Iterable, Sized
 from colorama import Fore, Style
 
 HL_OPEN = "``"
@@ -24,12 +24,9 @@ def hl(what: str) -> str:  # pylint: disable=invalid-name
     return f"{HL_OPEN}{what}{HL_CLOSE}"
 
 
-def pluralize(name: str, items: Union[Sized, int]) -> str:
+def pluralize(name: str, items: Sized) -> str:
     """Return a pluralized name unless there is exactly one element in container."""
-    try:
-        return f"{name}" if len(cast(Sized, items)) == 1 else f"{name}s"
-    except TypeError:
-        return f"{name}" if cast(int, items) == 1 else f"{name}s"
+    return f"{name}" if len(items) == 1 else f"{name}s"
 
 
 def hlistify(container: Iterable) -> str:
