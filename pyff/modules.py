@@ -2,14 +2,23 @@
 
 import ast
 import logging
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 import pyff.classes as pc
 import pyff.functions as pf
 import pyff.imports as pi
+from pyff.kitchensink import hl
 
 
 LOGGER = logging.getLogger(__name__)
+
+
+class ModuleSummary:  # pylint: disable=too-few-public-methods
+    """Holds summary information about a module"""
+
+    def __init__(self, name: str, node: ast.Module) -> None:
+        self.name: str = name
+        self.node: ast.Module = node
 
 
 class ModulePyfference:  # pylint: disable=too-few-public-methods
@@ -43,6 +52,37 @@ class ModulePyfference:  # pylint: disable=too-few-public-methods
             self.functions = self.functions.simplify()
 
         return self if (self.functions or self.classes or self.imports or self.other) else None
+
+
+class ModulesPyfference:  # pylint: disable=too-few-public-methods
+    """Holds difference between modules in a package"""
+
+    def __init__(
+        self,
+        removed: Dict[str, ModuleSummary],
+        changed: Dict[str, ModulePyfference],
+        new: Dict[str, ModuleSummary],
+    ) -> None:
+        self.removed: Dict[str, ModuleSummary] = removed
+        self.changed: Dict[str, ModulePyfference] = changed
+        self.new: Dict[str, ModuleSummary] = new
+
+    def __str__(self):
+        return "\n".join(
+            [
+                f"Module {hl(module)} changed:\n  " + str(change).replace("\n", "\n  ")
+                for module, change in self.changed.items()
+            ]
+        )
+
+    def __repr__(self):
+        return (
+            f"ModulesPyfference(removed={repr(self.removed)}, "
+            f"changed={repr(self.changed)}, new={repr(self.new)})"
+        )
+
+    def __bool__(self):
+        return bool(self.removed or self.changed or self.new)
 
 
 def pyff_module(old: ast.Module, new: ast.Module) -> Optional[ModulePyfference]:

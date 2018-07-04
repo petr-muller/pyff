@@ -2,7 +2,7 @@
 
 import ast
 
-from unittest.mock import Mock
+from unittest.mock import Mock, MagicMock
 
 import pyff.modules as pm
 import pyff.imports as pi
@@ -10,6 +10,37 @@ import pyff.functions as pf
 import pyff.classes as pc
 
 from helpers import parse_imports
+
+
+class TestModuleSummary:
+    def test_sanity(self):
+        summary = pm.ModuleSummary("module.py", Mock(spec=ast.Module))
+        assert summary.name == "module.py"
+        assert summary.node is not None
+
+
+class TestModulesPyfference:
+    def test_sanity(self):
+        mocked_imports = MagicMock(spec=pi.ImportsPyfference)
+        mocked_imports.__str__.return_value = "Mocked ImportsPyfference"
+        change = pm.ModulesPyfference(
+            removed={"old.py": pm.ModuleSummary("old.py", Mock(spec=ast.Module))},
+            changed={"changed.py": pm.ModulePyfference(imports=mocked_imports)},
+            new={
+                "new.py": pm.ModuleSummary("new.py", Mock(spec=ast.Module)),
+                "newtoo.py": pm.ModuleSummary("newtoo.py", Mock(spec=ast.Module)),
+            },
+        )
+        assert change.removed is not None
+        assert change.changed is not None
+        assert change.new is not None
+        assert len(change.new) == 2
+        assert str(change) == "Module ``changed.py'' changed:\n  Mocked ImportsPyfference"
+        assert change
+
+    def test_emptiness(self):
+        change = pm.ModulesPyfference({}, {}, {})
+        assert not change
 
 
 class TestModulePyfference:
