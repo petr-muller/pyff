@@ -1,8 +1,10 @@
+astroid==2.0.0.dev0
 black==18.6b2
 colorama==0.3.9
 coverage==4.5.1
 mypy==0.610
 pre-commit==1.10.2
+pyfakefs==3.4.3
 pylint==1.9.2
 pytest==3.6.1
 pytest-bdd==2.21.0
