@@ -7,7 +7,8 @@ from argparse import ArgumentParser
 from typing import Callable
 
 from pyff.modules import pyff_module_code
-from pyff.packages import pyff_package
+from pyff.packages import pyff_package_path
+from pyff.directories import pyff_directory
 from pyff.kitchensink import highlight, HIGHLIGHTS
 
 LOGGER = logging.getLogger(__name__)
@@ -32,7 +33,10 @@ def _pyff_that(function: Callable, what: str) -> None:
     changes = function(pathlib.Path(args.old), pathlib.Path(args.new))
 
     if changes is None:
-        print(f"Pyff did not detect any significant difference between {args.old} and {args.new}")
+        print(
+            f"Pyff did not detect any significant difference between "
+            f"{what} '{args.old}' and '{args.new}'"
+        )
         sys.exit(0)
 
     print(highlight(str(changes), args.highlight))
@@ -54,7 +58,12 @@ def pyffmod() -> None:
 
 def pyffpkg() -> None:
     """Entry point for the `pyff-package` command"""
-    _pyff_that(pyff_package, "package")
+    _pyff_that(pyff_package_path, "package")
+
+
+def pyffdir() -> None:
+    """Entry point for the `pyff-dir` command"""
+    _pyff_that(pyff_directory, "directory")
 
 
 if __name__ == "__main__":

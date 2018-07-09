@@ -106,6 +106,7 @@ ENV/
 # Eclipse
 .project
 .pydevproject
+tags
 
 # pytest
 .pytest_cache

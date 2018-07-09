@@ -2,6 +2,10 @@
 
 . v/bin/activate
 
+dirtest() {
+  helpers/clitest --prefix '# ' --diff-options '-u --color=always' tests/pyff-dir/all-packages.clitest
+}
+
 example() {
   pyff tests/examples/$1*.old tests/examples/$1*.new
 }
@@ -51,7 +55,8 @@ st() {
     pylint --rcfile=.pylintrc pyff tests/unit/*.py &&
     mypy pyff &&
     helpers/clitest --prefix '# ' --diff-options '-u --color=always' tests/examples/*.new &&
-    helpers/clitest --prefix '# ' --diff-options '-u --color=always' tests/package-examples/*.clitest
+    helpers/clitest --prefix '# ' --diff-options '-u --color=always' tests/package-examples/*.clitest &&
+    helpers/clitest --prefix '# ' --diff-options '-u --color=always' tests/pyff-dir/all-packages.clitest
 }
 
 cov() {
