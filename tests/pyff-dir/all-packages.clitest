@@ -1,0 +1,14 @@
+# Expected output for `clitest`
+# $ . helpers/helpers.sh
+# $
+#
+# $ pyff-dir tests/package-examples/old tests/package-examples/new --highlight-names quotes
+# Package 'pkg01' changed:
+#   Module '__init__.py' changed:
+#     New imported 'Action', 'ArgumentParser' from new 'argparse'
+#     New class 'ParsePlayerAction' derived from imported 'Action' with 0 public methods
+#     Function 'main' changed implementation:
+#       Code semantics changed
+#       Newly uses imported 'ArgumentParser'
+# $
+
