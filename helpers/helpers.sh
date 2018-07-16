@@ -56,7 +56,8 @@ st() {
     mypy pyff &&
     helpers/clitest --prefix '# ' --diff-options '-u --color=always' tests/examples/*.new &&
     helpers/clitest --prefix '# ' --diff-options '-u --color=always' tests/package-examples/*.clitest &&
-    helpers/clitest --prefix '# ' --diff-options '-u --color=always' tests/pyff-dir/all-packages.clitest
+    helpers/clitest --prefix '# ' --diff-options '-u --color=always' tests/pyff-dir/all-packages.clitest &&
+    helpers/clitest --prefix '# ' --diff-options '-u --color=always' tests/pyff-git/pyff.clitest
 }
 
 cov() {

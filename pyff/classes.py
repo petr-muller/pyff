@@ -80,6 +80,9 @@ class ClassSummary:  # pylint: disable=too-few-public-methods
 
         raise Exception("Multiple inheritance not yet implemented")
 
+    def __lt__(self, other):
+        return self.name < other.name
+
     def __repr__(self):
         return (
             f"ClassSummary(methods={self.methods}, attributes={self.attributes}, "
