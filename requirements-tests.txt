@@ -2,6 +2,7 @@ astroid==2.0.0.dev0
 black==18.6b2
 colorama==0.3.9
 coverage==4.5.1
+GitPython==2.1.10
 mypy==0.610
 pre-commit==1.10.2
 pyfakefs==3.4.3

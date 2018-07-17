@@ -71,6 +71,13 @@ class TestClassSummary:
         assert cls.public_methods == {"a", "b", "c"}
         assert str(cls) == "class ``Klass'' with 3 public methods"
 
+        another_def = self.classdef()
+        another_def.name = "Llass"
+        another = pc.ClassSummary(methods=set(), attributes={}, definition=another_def)
+        assert cls < another
+        another_def.name = "Jlass"
+        assert cls > another
+
     def test_attributes(self, classdef):
         cls = pc.ClassSummary(
             methods={"__init__"}, definition=classdef, attributes={"attrib", "field"}
