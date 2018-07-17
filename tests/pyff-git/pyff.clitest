@@ -4,10 +4,6 @@
 #
 # $ pyff-git . 6b1c70980e491235bfc938b6109b9280477e560a f1c3e475ef5dd0d2315d954deef6f815473f5811 --highlight-names quotes
 # Package 'pyff' changed:
-#   Module 'pyfference.py' changed:
-#     New imported 'Dict' from 'typing'
-#     New class 'FromImportPyfference' with 0 public methods
-#     New class 'ModulePyfference' with 0 public methods
 #   Module 'pyff.py' changed:
 #     New imported 'Module', 'NodeVisitor' from 'ast'
 #     New imported 'defaultdict' from new 'collections'
@@ -16,4 +12,8 @@
 #     New function '_pyff_from_imports'
 #     New function '_pyff_modules'
 #     New function 'pyff_module'
+#   Module 'pyfference.py' changed:
+#     New imported 'Dict' from 'typing'
+#     New class 'FromImportPyfference' with 0 public methods
+#     New class 'ModulePyfference' with 0 public methods
 # $

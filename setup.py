@@ -32,6 +32,7 @@ setuptools.setup(
             "pyff=pyff.run:pyffmod",
             "pyff-package=pyff.run:pyffpkg",
             "pyff-dir=pyff.run:pyffdir",
+            "pyff-git=pyff.run:pyffgit",
         ]
     },
 )

@@ -71,7 +71,7 @@ class ModulesPyfference:  # pylint: disable=too-few-public-methods
         return "\n".join(
             [
                 f"Module {hl(module)} changed:\n  " + str(change).replace("\n", "\n  ")
-                for module, change in self.changed.items()
+                for module, change in sorted(self.changed.items())
             ]
         )
 
