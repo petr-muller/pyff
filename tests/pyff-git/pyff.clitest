@@ -16,4 +16,11 @@
 #     New imported 'Dict' from 'typing'
 #     New class 'FromImportPyfference' with 0 public methods
 #     New class 'ModulePyfference' with 0 public methods
+#   New module 'run.py'
+# Module 'tests/unit/test_pyfference.py' changed:
+#   New imported 'FromImportPyfference', 'ModulePyfference' from 'pyff.pyfference'
+#   New function 'test_module_with_from_imports'
+#   New function 'test_new_from_import'
+# New module 'tests/unit/test_modules.py'
+
 # $

@@ -4,6 +4,7 @@ import logging
 import pathlib
 from typing import Optional, Tuple, FrozenSet, Set
 
+import pyff.modules as pm
 import pyff.packages as pp
 
 
@@ -13,18 +14,23 @@ LOGGER = logging.getLogger(__name__)
 class DirectoryPyfference:  # pylint: disable=too-few-public-methods
     """Represents differences between two directories"""
 
-    def __init__(self, packages: Optional[pp.PackagesPyfference]) -> None:
+    def __init__(
+        self, packages: Optional[pp.PackagesPyfference], modules: Optional[pm.ModulesPyfference]
+    ) -> None:
         self.packages: Optional[pp.PackagesPyfference] = packages
+        self.modules: Optional[pm.ModulesPyfference] = modules
 
     def __str__(self):
         output = []
         if self.packages:
             output.append(str(self.packages))
+        if self.modules:
+            output.append(str(self.modules))
 
         return "\n".join(output)
 
     def __bool__(self):
-        return bool(self.packages)
+        return bool(self.packages or self.modules)
 
 
 def find_those_pythonz(
@@ -57,43 +63,102 @@ def find_those_pythonz(
     return (frozenset(packages), frozenset(modules))
 
 
-def pyff_directory(old: pathlib.Path, new: pathlib.Path) -> Optional[DirectoryPyfference]:
-    """Find Python packages and modules in two directories and compare them"""
-    if not (old.is_dir() and new.is_dir()):
-        raise ValueError(f"At least one of {old}, {new} is not an existing directory")
+def _compare_packages_in_dir(
+    old_dir: pathlib.Path,
+    new_dir: pathlib.Path,
+    old: FrozenSet[pathlib.Path],
+    new: FrozenSet[pathlib.Path],
+) -> Optional[pp.PackagesPyfference]:
+    LOGGER.debug("Packages in the old directory: %s", str(old))
+    LOGGER.debug("Packages in the new directory: %s", str(new))
 
-    old_pkgs, old_modules = find_those_pythonz(old)
-    new_pkgs, new_modules = find_those_pythonz(new)
-
-    LOGGER.debug("Packages in the old directory: %s", str(old_pkgs))
-    LOGGER.debug("Packages in the new directory: %s", str(new_pkgs))
-    LOGGER.debug("Modules in the old directory: %s", str(old_modules))
-    LOGGER.debug("Modules in the new directory: %s", str(new_modules))
-
-    removed_packages = old_pkgs - new_pkgs
-    both_packages = old_pkgs.intersection(new_pkgs)
-    new_packages = new_pkgs - old_pkgs
+    removed_packages = old - new
+    both_packages = old.intersection(new)
+    new_packages = new - old
 
     LOGGER.debug("Removed packages: %s", str(removed_packages))
     LOGGER.debug("Packages in both directories: %s", str(both_packages))
     LOGGER.debug("New packages: %s", str(new_packages))
 
-    removed_package_summaries = {pkg: pp.summarize_package(old / pkg) for pkg in removed_packages}
+    removed_package_summaries = {
+        pkg: pp.summarize_package(old_dir / pkg) for pkg in removed_packages
+    }
     changed_packages = {
         pkg: change
         for pkg, change in [
-            (pkg, pp.pyff_package(pp.summarize_package(old / pkg), pp.summarize_package(new / pkg)))
+            (
+                pkg,
+                pp.pyff_package(
+                    pp.summarize_package(old_dir / pkg), pp.summarize_package(new_dir / pkg)
+                ),
+            )
             for pkg in both_packages
         ]
         if change is not None
     }
-    new_package_summaries = {pkg: pp.summarize_package(new / pkg) for pkg in new_packages}
+    new_package_summaries = {pkg: pp.summarize_package(new_dir / pkg) for pkg in new_packages}
 
     if removed_package_summaries or changed_packages or new_package_summaries:
-        return DirectoryPyfference(
-            packages=pp.PackagesPyfference(
-                removed_package_summaries, changed_packages, new_package_summaries
-            )
+        return pp.PackagesPyfference(
+            removed_package_summaries, changed_packages, new_package_summaries
         )
+
+    return None
+
+
+def _compare_modules_in_dir(
+    old_dir: pathlib.Path,
+    new_dir: pathlib.Path,
+    old: FrozenSet[pathlib.Path],
+    new: FrozenSet[pathlib.Path],
+) -> Optional[pm.ModulesPyfference]:
+    LOGGER.debug("Modules in the old directory: %s", str(old))
+    LOGGER.debug("Modules in the new directory: %s", str(new))
+
+    removed_modules = old - new
+    both_modules = old.intersection(new)
+    new_modules = new - old
+
+    LOGGER.debug("Removed modules: %s", str(removed_modules))
+    LOGGER.debug("Modules in both directories: %s", str(both_modules))
+    LOGGER.debug("New modules: %s", str(new_modules))
+
+    removed_module_summaries = {mod: pm.summarize_module(old_dir / mod) for mod in removed_modules}
+    changed_modules = {
+        mod: change
+        for mod, change in [
+            (
+                mod,
+                pm.pyff_module(
+                    pm.summarize_module(old_dir / mod), pm.summarize_module(new_dir / mod)
+                ),
+            )
+            for mod in both_modules
+        ]
+        if change is not None
+    }
+    new_module_summaries = {mod: pm.summarize_module(new_dir / mod) for mod in new_modules}
+
+    if removed_module_summaries or changed_modules or new_module_summaries:
+        return pm.ModulesPyfference(removed_module_summaries, changed_modules, new_module_summaries)
+
+    return None
+
+
+def pyff_directory(old: pathlib.Path, new: pathlib.Path) -> Optional[DirectoryPyfference]:
+    """Find Python packages and modules in two directories and compare them"""
+    if not (old.is_dir() and new.is_dir()):
+        raise ValueError(f"At least one of {old}, {new} is not an existing directory")
+
+    old_pkgs, old_mods = find_those_pythonz(old)
+    new_pkgs, new_mods = find_those_pythonz(new)
+
+    packages: Optional[pp.PackagesPyfference] = _compare_packages_in_dir(
+        old, new, old_pkgs, new_pkgs
+    )
+    modules: Optional[pm.ModulesPyfference] = _compare_modules_in_dir(old, new, old_mods, new_mods)
+
+    if packages or modules:
+        return DirectoryPyfference(packages=packages, modules=modules)
 
     return None

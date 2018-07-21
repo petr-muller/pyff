@@ -1,0 +1,8 @@
+# Expected output for `clitest`
+# $ . helpers/helpers.sh
+# $
+#
+# $ pyff-dir tests/pyff-dir/old/01 tests/pyff-dir/new/01 --highlight-names quotes
+# New modules 'module.py', 'subdir/module.py'
+# $
+

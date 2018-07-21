@@ -93,10 +93,10 @@ class TestPyffPackage:
         change = pp.pyff_package(sample_package, sample_with_new_module)
         assert change is not None
         assert change.modules is not None
-        assert "new.py" in change.modules.new
+        assert pathlib.Path("new.py") in change.modules.new
 
     def test_pyff_package_path(self, sample_package_path, sample_with_new_module_path):
         change = pp.pyff_package_path(sample_package_path, sample_with_new_module_path)
         assert change is not None
         assert change.modules is not None
-        assert "new.py" in change.modules.new
+        assert pathlib.Path("new.py") in change.modules.new
