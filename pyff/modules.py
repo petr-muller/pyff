@@ -2,12 +2,13 @@
 
 import ast
 import logging
+import pathlib
 from typing import List, Optional, Dict
 
 import pyff.classes as pc
 import pyff.functions as pf
 import pyff.imports as pi
-from pyff.kitchensink import hl
+from pyff.kitchensink import hl, pluralize, hlistify
 
 
 LOGGER = logging.getLogger(__name__)
@@ -59,21 +60,36 @@ class ModulesPyfference:  # pylint: disable=too-few-public-methods
 
     def __init__(
         self,
-        removed: Dict[str, ModuleSummary],
-        changed: Dict[str, ModulePyfference],
-        new: Dict[str, ModuleSummary],
+        removed: Dict[pathlib.Path, ModuleSummary],
+        changed: Dict[pathlib.Path, ModulePyfference],
+        new: Dict[pathlib.Path, ModuleSummary],
     ) -> None:
-        self.removed: Dict[str, ModuleSummary] = removed
-        self.changed: Dict[str, ModulePyfference] = changed
-        self.new: Dict[str, ModuleSummary] = new
+        self.removed: Dict[pathlib.Path, ModuleSummary] = removed
+        self.changed: Dict[pathlib.Path, ModulePyfference] = changed
+        self.new: Dict[pathlib.Path, ModuleSummary] = new
 
     def __str__(self):
-        return "\n".join(
-            [
-                f"Module {hl(module)} changed:\n  " + str(change).replace("\n", "\n  ")
-                for module, change in sorted(self.changed.items())
-            ]
-        )
+        lines = []
+
+        if self.removed:
+            lines.append(
+                f"Removed {pluralize('module', self.removed)} {hlistify(sorted(self.removed))}"
+            )
+
+        if self.changed:
+            lines.append(
+                "\n".join(
+                    [
+                        f"Module {hl(module)} changed:\n  " + str(change).replace("\n", "\n  ")
+                        for module, change in sorted(self.changed.items())
+                    ]
+                )
+            )
+
+        if self.new:
+            lines.append(f"New {pluralize('module', self.new)} {hlistify(sorted(self.new))}")
+
+        return "\n".join(lines)
 
     def __repr__(self):
         return (
@@ -85,13 +101,18 @@ class ModulesPyfference:  # pylint: disable=too-few-public-methods
         return bool(self.removed or self.changed or self.new)
 
 
-def pyff_module(old: ast.Module, new: ast.Module) -> Optional[ModulePyfference]:
+def summarize_module(module: pathlib.Path) -> ModuleSummary:
+    """Return a ModuleSummary of a given module"""
+    return ModuleSummary(name=module.name, node=ast.parse(module.read_text()))
+
+
+def pyff_module(old: ModuleSummary, new: ModuleSummary) -> Optional[ModulePyfference]:
     """Return difference between two Python modules, or None if they are identical"""
-    old_imports = pi.ImportedNames.extract(old)
-    new_imports = pi.ImportedNames.extract(new)
-    imports = pi.pyff_imports(old, new)
-    classes = pc.pyff_classes(old, new, old_imports, new_imports)
-    functions = pf.pyff_functions(old, new, old_imports, new_imports)
+    old_imports = pi.ImportedNames.extract(old.node)
+    new_imports = pi.ImportedNames.extract(new.node)
+    imports = pi.pyff_imports(old.node, new.node)
+    classes = pc.pyff_classes(old.node, new.node, old_imports, new_imports)
+    functions = pf.pyff_functions(old.node, new.node, old_imports, new_imports)
 
     if imports or classes or functions:
         LOGGER.debug("Modules differ")
@@ -102,9 +123,6 @@ def pyff_module(old: ast.Module, new: ast.Module) -> Optional[ModulePyfference]:
     return None
 
 
-def pyff_module_code(old: str, new: str) -> Optional[ModulePyfference]:
+def pyff_module_path(old: pathlib.Path, new: pathlib.Path) -> Optional[ModulePyfference]:
     """Return difference between two Python modules, or None if they are identical"""
-    # pylint: disable=unused-variable
-    old_ast = ast.parse(old)
-    new_ast = ast.parse(new)
-    return pyff_module(old_ast, new_ast)
+    return pyff_module(summarize_module(old), summarize_module(new))

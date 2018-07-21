@@ -6,7 +6,7 @@ import pathlib
 from argparse import ArgumentParser
 from typing import Callable
 
-from pyff.modules import pyff_module_code
+from pyff.modules import pyff_module_path
 from pyff.packages import pyff_package_path
 from pyff.directories import pyff_directory
 from pyff.repositories import pyff_git_revision
@@ -47,11 +47,7 @@ def pyffmod() -> None:
 
     def compare(old, new, _):
         """Open two arguments as files and compare them"""
-        with open(old, "r") as old_module, open(new, "r") as new_module:
-            old_version = old_module.read()
-            new_version = new_module.read()
-
-        return pyff_module_code(old_version, new_version)
+        return pyff_module_path(old, new)
 
     _pyff_that(compare, "module")
 

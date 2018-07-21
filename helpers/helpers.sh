@@ -38,11 +38,11 @@ example_quotes() {
 }
 
 example_package_quotes() {
-  pyff-package --highlight-names quotes tests/package-examples/old/$1 tests/package-examples/new/$1
+  pyff-package --highlight-names quotes "tests/package-examples/old/$1" "tests/package-examples/new/$1"
 }
 
 exdebug_package_quotes() {
-  pyff-package --highlight-names quotes tests/package-examples/old/$1 tests/package-examples/new/$1 --debug
+  pyff-package --highlight-names quotes "tests/package-examples/old/$1" "tests/package-examples/new/$1" --debug
 }
 ft() {
   cat helpers/fast-setup.cfg > setup.cfg
@@ -56,8 +56,8 @@ st() {
     mypy pyff &&
     helpers/clitest --prefix '# ' --diff-options '-u --color=always' tests/examples/*.new &&
     helpers/clitest --prefix '# ' --diff-options '-u --color=always' tests/package-examples/*.clitest &&
-    helpers/clitest --prefix '# ' --diff-options '-u --color=always' tests/pyff-dir/all-packages.clitest &&
-    helpers/clitest --prefix '# ' --diff-options '-u --color=always' tests/pyff-git/pyff.clitest
+    helpers/clitest --prefix '# ' --diff-options '-u --color=always' tests/pyff-dir/*.clitest &&
+    helpers/clitest --prefix '# ' --diff-options '-u --color=always' tests/pyff-git/*.clitest
 }
 
 cov() {

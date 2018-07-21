@@ -97,7 +97,10 @@ def _compare_module_in_packages(
     old_module = old_package.path / module
     new_module = new_package.path / module
 
-    return pm.pyff_module_code(old_module.read_text(), new_module.read_text())
+    old_summary = pm.summarize_module(old_module)
+    new_summary = pm.summarize_module(new_module)
+
+    return pm.pyff_module(old_summary, new_summary)
 
 
 def summarize_package(package: pathlib.Path) -> PackageSummary:
@@ -144,13 +147,11 @@ def pyff_package(
     LOGGER.debug("New modules: %s", str(new))
 
     removed_summaries = {
-        str(module): _summarize_module_in_package(module, old_package) for module in removed
+        module: _summarize_module_in_package(module, old_package) for module in removed
     }
-    new_summaries = {
-        str(module): _summarize_module_in_package(module, new_package) for module in new
-    }
+    new_summaries = {module: _summarize_module_in_package(module, new_package) for module in new}
     changed = {
-        str(module): change
+        module: change
         for module, change in [
             (module, _compare_module_in_packages(module, old_package, new_package))
             for module in both

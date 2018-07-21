@@ -1,6 +1,7 @@
 # pylint: disable=missing-docstring, no-self-use, too-few-public-methods
 
 import ast
+import pathlib
 
 from unittest.mock import Mock, MagicMock
 
@@ -35,7 +36,12 @@ class TestModulesPyfference:
         assert change.changed is not None
         assert change.new is not None
         assert len(change.new) == 2
-        assert str(change) == "Module ``changed.py'' changed:\n  Mocked ImportsPyfference"
+        assert str(change) == (
+            "Removed module ``old.py''\n"
+            "Module ``changed.py'' changed:\n"
+            "  Mocked ImportsPyfference\n"
+            "New modules ``new.py'', ``newtoo.py''"
+        )
         assert change
 
     def test_emptiness(self):
@@ -91,23 +97,25 @@ class TestPyffModule:
     def test_sanity(self):
         old = ast.parse("")
         new = ast.parse("import os\n" "class Klass:\n" "    pass\n" "def funktion():\n" "    pass")
-        change = pm.pyff_module(old, new)
+        change = pm.pyff_module(pm.ModuleSummary("module", old), pm.ModuleSummary("module", new))
+        assert change.imports is not None
+        assert change.classes is not None
+        assert change.functions is not None
+
+    def test_pyff_module_path(self, fs):  # pylint: disable=invalid-name
+        fs.create_file("old.py")
+        fs.create_file("new.py")
+        pathlib.Path("new.py").write_text(
+            "import os\n" "class Klass:\n" "    pass\n" "def funktion():\n" "    pass"
+        )
+        change = pm.pyff_module_path(pathlib.Path("old.py"), pathlib.Path("new.py"))
         assert change.imports is not None
         assert change.classes is not None
         assert change.functions is not None
 
     def test_same(self):
-        module = ast.parse(
-            "import os\n" "class Klass:\n" "    pass\n" "def funktion():\n" "    pass"
+        module = pm.ModuleSummary(
+            "module",
+            ast.parse("import os\n" "class Klass:\n" "    pass\n" "def funktion():\n" "    pass"),
         )
         assert pm.pyff_module(module, module) is None
-
-
-class TestPyffModuleCode:
-    def test_sanity(self):
-        old = ""
-        new = "import os\n" "class Klass:\n" "    pass\n" "def funktion():\n" "    pass"
-        change = pm.pyff_module_code(old, new)
-        assert change.imports is not None
-        assert change.classes is not None
-        assert change.functions is not None

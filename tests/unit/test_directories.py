@@ -5,21 +5,30 @@ from unittest.mock import MagicMock
 import pytest
 import pyff.packages as pp
 import pyff.directories as pd
+import pyff.modules as pm
 
 
 class TestDirectoryPyfference:
     def test_packages(self):
         mock_packages = MagicMock(spec=pp.PackagesPyfference)
         mock_packages.__str__.return_value = "Packages differ"
-        change = pd.DirectoryPyfference(packages=mock_packages)
+        change = pd.DirectoryPyfference(packages=mock_packages, modules=None)
         assert change
         assert change.packages
         assert str(change) == "Packages differ"
 
     def test_empty(self):
-        change = pd.DirectoryPyfference(packages=None)
+        change = pd.DirectoryPyfference(packages=None, modules=None)
         assert not change
         assert str(change) == ""
+
+    def test_modules(self):
+        mock_modules = MagicMock(spec=pm.ModulesPyfference)
+        mock_modules.__str__.return_value = "Modules differ"
+        change = pd.DirectoryPyfference(modules=mock_modules, packages=None)
+        assert change
+        assert change.modules
+        assert str(change) == "Modules differ"
 
 
 class TestFindThosePythonz:
@@ -115,3 +124,25 @@ class TestPyffDirectory:
         change = pd.pyff_directory(pathlib.Path("old"), pathlib.Path("new"))
         assert change
         assert pathlib.Path("pkg") in change.packages.changed
+
+    def test_removed_module(self, fs):  # pylint: disable=invalid-name
+        fs.create_file("old/module.py")
+        fs.create_dir("new")
+        change = pd.pyff_directory(pathlib.Path("old"), pathlib.Path("new"))
+        assert change
+        assert pathlib.Path("module.py") in change.modules.removed
+
+    def test_changed_module(self, fs):  # pylint: disable=invalid-name
+        fs.create_file("old/module.py")
+        fs.create_file("new/module.py")
+        pathlib.Path("new/module.py").write_text("class Klass:\n  pass")
+        change = pd.pyff_directory(pathlib.Path("old"), pathlib.Path("new"))
+        assert change
+        assert pathlib.Path("module.py") in change.modules.changed
+
+    def test_new_module(self, fs):  # pylint: disable=invalid-name
+        fs.create_dir("old")
+        fs.create_file("new/module.py")
+        change = pd.pyff_directory(pathlib.Path("old"), pathlib.Path("new"))
+        assert change
+        assert pathlib.Path("module.py") in change.modules.new
