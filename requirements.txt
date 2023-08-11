@@ -1,2 +1,2 @@
 colorama==0.3.9
-GitPython==2.1.10
+GitPython==3.1.32
